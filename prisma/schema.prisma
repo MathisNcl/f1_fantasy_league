@@ -1,0 +1,114 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+model User {
+  id             String          @id @default(cuid())
+  name           String
+  email          String          @unique
+  password       String
+  role           Role            @default(USER)
+  createdAt      DateTime        @default(now())
+  picks          Pick[]
+  scores         Score[]
+  driverEnergies DriverEnergy[]
+}
+
+model Race {
+  id        Int          @id @default(autoincrement())
+  name      String
+  location  String
+  date      DateTime
+  deadline  DateTime?    // Deadline de soumission (FP3). Si null, utilise date.
+  round     Int
+  season    Int
+  hasSprint Boolean      @default(false)
+  picks     Pick[]
+  result    RaceResult?
+  scores    Score[]
+
+  @@unique([round, season])
+}
+
+model Pick {
+  id                 String   @id @default(cuid())
+  userId             String
+  raceId             Int
+  driver1            String
+  driver2            String
+  team               String
+  strategy           String   // Code de la stratégie choisie
+  drsTarget          String?  // UserId cible pour la stratégie DRS
+  huileMoteurTarget  String?  // Code pilote cible pour la stratégie Huile moteur
+  createdAt          DateTime @default(now())
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  race               Race     @relation(fields: [raceId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, raceId])
+}
+
+model DriverEnergy {
+  id         String @id @default(cuid())
+  userId     String
+  driverCode String
+  energy     Float  @default(1.0) // 0.0 à 1.0 (0% à 100%)
+  season     Int
+  user       User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, driverCode, season])
+}
+
+model RaceResult {
+  id               Int            @id @default(autoincrement())
+  raceId           Int            @unique
+  fastestLap       String         // Code pilote avec le meilleur tour (course principale)
+  hasRedFlag       Boolean        @default(false)
+  hasSprintRedFlag Boolean        @default(false) // Drapeau rouge en course sprint
+  driverResults    DriverResult[]
+  race             Race           @relation(fields: [raceId], references: [id], onDelete: Cascade)
+}
+
+model DriverResult {
+  id             String     @id @default(cuid())
+  raceResultId   Int
+  driverCode     String
+  // Course principale
+  qualifyingPos  Int?       // Position en qualifs (1-20) = grille de départ. Null si absent.
+  racePos        Int?       // Position d'arrivée. Null si DNF/DNS.
+  isDnf          Boolean    @default(false)
+  // Sprint (week-end sprint uniquement)
+  sprintQualiPos Int?       // Position en sprint qualifying (SQ1/SQ2/SQ3) = grille sprint.
+  sprintRacePos  Int?       // Position d'arrivée du sprint. Null si DNF/DNS.
+  sprintIsDnf    Boolean    @default(false)
+  raceResult     RaceResult @relation(fields: [raceResultId], references: [id], onDelete: Cascade)
+
+  @@unique([raceResultId, driverCode])
+}
+
+model Score {
+  id        String  @id @default(cuid())
+  userId    String
+  raceId    Int
+  points    Int
+  breakdown String? // JSON sérialisé de ScoreBreakdown
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  race      Race    @relation(fields: [raceId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, raceId])
+}
+
+model AllowedEmail {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  createdAt DateTime @default(now())
+}
