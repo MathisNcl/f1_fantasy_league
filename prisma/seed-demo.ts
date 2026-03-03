@@ -31,7 +31,7 @@ const TEAMS = [
 // Tokens max par stratégie (mirror de constants.ts)
 // drs, undercut, fia, huile_moteur exclus du demo (effets inter-joueurs complexes)
 const STRATEGY_TOKENS: Record<string, number> = {
-  ultra_tendre: 2, soft: 2, medium: 10, hard: 2, super_dur: 2,
+  ultra_tendre: 2, soft: 2, medium: 7, hard: 2, super_dur: 2,
   pluie: 2, moteur: 1,
 };
 
