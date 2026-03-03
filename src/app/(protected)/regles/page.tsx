@@ -201,7 +201,7 @@ export default function ReglesPage() {
                   <div className="flex items-center gap-2 mb-1">
                     <span className="text-white font-semibold text-sm">{s.label}</span>
                     <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${colorClass}`}>
-                      {s.tokens === 10 ? "∞ illimité" : `${s.tokens}× par saison`}
+                      {s.tokens === 7 ? "∞ illimité" : `${s.tokens}× par saison`}
                     </span>
                   </div>
                   <p className="text-gray-400 text-xs leading-relaxed">{s.description}</p>
