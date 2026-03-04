@@ -66,10 +66,18 @@ async function getMyPickForRace(userId: string, raceId: number) {
 async function getNextRacePicksStatus(raceId: number) {
   const [allUsers, picks] = await Promise.all([
     prisma.user.findMany({ select: { id: true, name: true } }),
-    prisma.pick.findMany({ where: { raceId }, select: { userId: true } }),
+    prisma.pick.findMany({
+      where: { raceId },
+      select: { userId: true, driver1: true, driver2: true, team: true, strategy: true, drsTarget: true },
+    }),
   ]);
-  const pickUserIds = new Set(picks.map((p) => p.userId));
-  return allUsers.map((u) => ({ id: u.id, name: u.name, hasPick: pickUserIds.has(u.id) }));
+  const picksByUserId = new Map(picks.map((p) => [p.userId, p]));
+  return allUsers.map((u) => ({
+    id: u.id,
+    name: u.name,
+    hasPick: picksByUserId.has(u.id),
+    pick: picksByUserId.get(u.id) ?? null,
+  }));
 }
 
 async function getLastRaceRecap(currentYear: number, nextRaceId: number | undefined) {
@@ -208,12 +216,27 @@ export default async function DashboardPage() {
       </div>
 
       {/* Statut des paris pour le prochain GP */}
-      {nextRace && picksStatus.length > 0 && (
-        <NextRacePicksStatus
-          raceName={nextRace.name}
-          entries={picksStatus.map((p) => ({ ...p, isCurrentUser: p.id === userId }))}
-        />
-      )}
+      {(() => {
+        if (!nextRace || picksStatus.length === 0) return null;
+        const now = new Date();
+        const deadline = nextRace.deadline ?? nextRace.date;
+        const msToDeadline = deadline.getTime() - now.getTime();
+        const isRaceWeek = msToDeadline <= 7 * 24 * 60 * 60 * 1000;
+        const deadlinePassed = now >= deadline;
+        if (!isRaceWeek && !deadlinePassed) return null;
+        return (
+          <NextRacePicksStatus
+            raceName={nextRace.name}
+            deadline={deadline.toISOString()}
+            deadlinePassed={deadlinePassed}
+            entries={picksStatus.map((p) => ({
+              ...p,
+              isCurrentUser: p.id === userId,
+              pick: deadlinePassed ? p.pick : null,
+            }))}
+          />
+        );
+      })()}
 
       {/* Historique des picks */}
       <MyPicksHistory picks={myPicks} />

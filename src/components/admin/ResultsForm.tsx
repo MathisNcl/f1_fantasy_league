@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Race, RaceResult } from "@prisma/client";
 import { DRIVERS } from "@/lib/constants";
@@ -36,8 +36,54 @@ function initRows(): DriverRow[] {
   }));
 }
 
+function parseCsv(text: string): { rows: DriverRow[]; fastestLap: string } {
+  const lines = text.trim().split(/\r?\n/).filter((l) => l.trim());
+  if (lines.length === 0) throw new Error("Fichier CSV vide.");
+
+  const firstLine = lines[0].toLowerCase();
+  const dataLines = firstLine.includes("driver") || firstLine.includes("pilote")
+    ? lines.slice(1)
+    : lines;
+
+  if (dataLines.length === 0) throw new Error("Aucune donnée dans le CSV.");
+
+  const newRows = initRows();
+  let parsedFastestLap = "";
+  let parsedCount = 0;
+
+  for (const line of dataLines) {
+    const cols = line.split(",").map((c) => c.trim());
+    const driverCode = cols[0]?.toUpperCase();
+    if (!driverCode) continue;
+
+    const rowIndex = newRows.findIndex((r) => r.driverCode === driverCode);
+    if (rowIndex === -1) continue;
+
+    const isDnf   = cols[3] === "1" || cols[3]?.toLowerCase() === "true";
+    const hasFl   = cols[4] === "1" || cols[4]?.toLowerCase() === "true";
+    const isSpDnf = cols[7] === "1" || cols[7]?.toLowerCase() === "true";
+
+    if (hasFl) parsedFastestLap = driverCode;
+
+    newRows[rowIndex] = {
+      ...newRows[rowIndex],
+      qualifyingPos:  cols[1] ?? "",
+      racePos:        isDnf ? "" : (cols[2] ?? ""),
+      isDnf,
+      sprintQualiPos: cols[5] ?? "",
+      sprintRacePos:  isSpDnf ? "" : (cols[6] ?? ""),
+      sprintIsDnf:    isSpDnf,
+    };
+    parsedCount++;
+  }
+
+  if (parsedCount === 0) throw new Error("Aucun code pilote reconnu dans le CSV.");
+  return { rows: newRows, fastestLap: parsedFastestLap };
+}
+
 export default function ResultsForm({ races }: Props) {
   const router = useRouter();
+  const csvInputRef = useRef<HTMLInputElement>(null);
   const [raceId, setRaceId] = useState("");
   const [fastestLap, setFastestLap] = useState("");
   const [hasRedFlag, setHasRedFlag] = useState(false);
@@ -46,6 +92,26 @@ export default function ResultsForm({ races }: Props) {
   const [activeTab, setActiveTab] = useState<"sprint" | "course">("sprint");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [csvMessage, setCsvMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
+  function handleCsvImport(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const { rows: newRows, fastestLap: fl } = parseCsv(ev.target?.result as string);
+        setRows(newRows);
+        if (fl) setFastestLap(fl);
+        const filled = newRows.filter((r) => r.qualifyingPos || r.racePos || r.isDnf).length;
+        setCsvMessage({ type: "success", text: `${filled} pilotes chargés${fl ? ` · FL : ${fl}` : ""}.` });
+      } catch (err) {
+        setCsvMessage({ type: "error", text: err instanceof Error ? err.message : "Erreur CSV." });
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = "";
+  }
 
   const pastRaces = races.filter((r) => new Date(r.date) < new Date());
   const selectedRace = pastRaces.find((r) => r.id === Number(raceId));
@@ -137,6 +203,31 @@ export default function ResultsForm({ races }: Props) {
             </select>
           </div>
 
+          {/* Import CSV */}
+          {raceId && (
+            <div className="flex items-center gap-3">
+              <input
+                ref={csvInputRef}
+                type="file"
+                accept=".csv,.txt"
+                onChange={handleCsvImport}
+                className="hidden"
+              />
+              <button
+                type="button"
+                onClick={() => csvInputRef.current?.click()}
+                className="flex items-center gap-2 px-3 py-2 bg-gray-700 hover:bg-gray-600 border border-gray-600 rounded-lg text-sm text-gray-200 transition-colors"
+              >
+                ↑ Importer CSV
+              </button>
+              {csvMessage && (
+                <p className={`text-xs ${csvMessage.type === "success" ? "text-green-400" : "text-red-400"}`}>
+                  {csvMessage.text}
+                </p>
+              )}
+            </div>
+          )}
+
           {raceId && (
             <>
               {/* Onglets Sprint / Course (si week-end sprint) */}
@@ -218,7 +309,7 @@ export default function ResultsForm({ races }: Props) {
                                   <input
                                     type="number"
                                     min="1"
-                                    max="20"
+                                    max="22"
                                     value={row.sprintQualiPos}
                                     onChange={(e) =>
                                       updateRow(row.driverCode, "sprintQualiPos", e.target.value)
@@ -231,7 +322,7 @@ export default function ResultsForm({ races }: Props) {
                                   <input
                                     type="number"
                                     min="1"
-                                    max="20"
+                                    max="22"
                                     value={row.sprintRacePos}
                                     onChange={(e) =>
                                       updateRow(row.driverCode, "sprintRacePos", e.target.value)
@@ -335,7 +426,7 @@ export default function ResultsForm({ races }: Props) {
                                   <input
                                     type="number"
                                     min="1"
-                                    max="20"
+                                    max="22"
                                     value={row.qualifyingPos}
                                     onChange={(e) =>
                                       updateRow(row.driverCode, "qualifyingPos", e.target.value)
@@ -348,7 +439,7 @@ export default function ResultsForm({ races }: Props) {
                                   <input
                                     type="number"
                                     min="1"
-                                    max="20"
+                                    max="22"
                                     value={row.racePos}
                                     onChange={(e) =>
                                       updateRow(row.driverCode, "racePos", e.target.value)
