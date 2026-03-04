@@ -4,6 +4,7 @@ import Leaderboard from "@/components/dashboard/Leaderboard";
 import PicksForm from "@/components/dashboard/PicksForm";
 import MyPicksHistory from "@/components/dashboard/MyPicksHistory";
 import LastRaceRecap from "@/components/dashboard/LastRaceRecap";
+import NextRacePicksStatus from "@/components/dashboard/NextRacePicksStatus";
 import { getRemainingTokens } from "@/lib/scoring";
 import { DRIVERS } from "@/lib/constants";
 
@@ -60,6 +61,15 @@ async function getMyPickForRace(userId: string, raceId: number) {
   return prisma.pick.findUnique({
     where: { userId_raceId: { userId, raceId } },
   });
+}
+
+async function getNextRacePicksStatus(raceId: number) {
+  const [allUsers, picks] = await Promise.all([
+    prisma.user.findMany({ select: { id: true, name: true } }),
+    prisma.pick.findMany({ where: { raceId }, select: { userId: true } }),
+  ]);
+  const pickUserIds = new Set(picks.map((p) => p.userId));
+  return allUsers.map((u) => ({ id: u.id, name: u.name, hasPick: pickUserIds.has(u.id) }));
 }
 
 async function getLastRaceRecap(currentYear: number, nextRaceId: number | undefined) {
@@ -127,9 +137,10 @@ export default async function DashboardPage() {
     }),
   ]);
 
-  const [existingPick, lastRaceRecap] = await Promise.all([
+  const [existingPick, lastRaceRecap, picksStatus] = await Promise.all([
     nextRace ? getMyPickForRace(userId, nextRace.id) : Promise.resolve(null),
     getLastRaceRecap(currentYear, nextRace?.id),
+    nextRace ? getNextRacePicksStatus(nextRace.id) : Promise.resolve([]),
   ]);
 
   // Picks de la saison courante, hors pick de la prochaine course
@@ -195,6 +206,14 @@ export default async function DashboardPage() {
           )}
         </div>
       </div>
+
+      {/* Statut des paris pour le prochain GP */}
+      {nextRace && picksStatus.length > 0 && (
+        <NextRacePicksStatus
+          raceName={nextRace.name}
+          entries={picksStatus.map((p) => ({ ...p, isCurrentUser: p.id === userId }))}
+        />
+      )}
 
       {/* Historique des picks */}
       <MyPicksHistory picks={myPicks} />
