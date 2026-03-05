@@ -34,9 +34,18 @@ type DriverStat = {
 };
 
 async function getDriverStats(season: number): Promise<DriverStat[]> {
+  const now = new Date();
   const [picks, driverResults] = await Promise.all([
     prisma.pick.findMany({
-      where: { race: { season } },
+      where: {
+        race: {
+          season,
+          OR: [
+            { deadline: { lte: now } },
+            { deadline: null, date: { lte: now } },
+          ],
+        },
+      },
       select: { driver1: true, driver2: true },
     }),
     prisma.driverResult.findMany({
