@@ -105,7 +105,7 @@ function getQualiPoints(pos: number): number {
   if (pos === 3) return 8;
   if (pos === 4) return 6;
   if (pos <= 10) return 5;  // Q3 positions 5-10
-  if (pos <= 15) return 2;  // éliminé en Q2
+  if (pos <= 16) return 2;  // éliminé en Q2
   return 1;                  // éliminé en Q1
 }
 
@@ -118,7 +118,7 @@ function getSprintQualiPoints(pos: number): number {
   if (pos === 3) return 4;
   if (pos === 4) return 3;
   if (pos <= 10) return 2;  // SQ3 positions 5-10
-  if (pos <= 15) return 1;  // éliminé en SQ2
+  if (pos <= 16) return 1;  // éliminé en SQ2
   return 0;                  // éliminé en SQ1
 }
 
@@ -503,45 +503,6 @@ export function calculateAllScores(
   isSprint: boolean
 ): Record<string, number> {
   return calculateAllScoresWithBreakdown(picks, result, isSprint).scores;
-}
-
-// ---------------------------------------------------------------------------
-// Calcule les stats de scoring de base pour un pilote (sans énergie/stratégie)
-// Stockées directement sur DriverResult lors de la saisie des résultats.
-// ---------------------------------------------------------------------------
-export function computeDriverScoringStats(dr: DriverResultData, fastestLap: string) {
-  const scoringQualiPts = dr.qualifyingPos !== null
-    ? getQualiPoints(dr.qualifyingPos)
-    : null;
-
-  const scoringRacePts = (dr.racePos !== null || dr.isDnf)
-    ? getRacePtsForDriver(dr, fastestLap)
-    : null;
-
-  const scoringSprintQualiPts = dr.sprintQualiPos !== null
-    ? getSprintQualiPoints(dr.sprintQualiPos)
-    : null;
-
-  const scoringSprintRacePts = (dr.sprintRacePos !== null && !dr.sprintIsDnf)
-    ? getSprintRacePtsForDriver(dr)
-    : null;
-
-  const scoringPosGainPts = (!dr.isDnf && dr.qualifyingPos !== null && dr.racePos !== null)
-    ? Math.max(0, dr.qualifyingPos - dr.racePos)
-    : null;
-
-  const scoringPosLost = (!dr.isDnf && dr.qualifyingPos !== null && dr.racePos !== null)
-    ? dr.qualifyingPos < dr.racePos
-    : null;
-
-  return {
-    scoringQualiPts,
-    scoringRacePts,
-    scoringSprintQualiPts,
-    scoringSprintRacePts,
-    scoringPosGainPts,
-    scoringPosLost,
-  };
 }
 
 // ---------------------------------------------------------------------------

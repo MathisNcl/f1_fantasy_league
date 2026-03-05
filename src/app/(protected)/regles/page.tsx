@@ -81,8 +81,8 @@ export default function ReglesPage() {
           <Row label="P3" value="+8 pts" />
           <Row label="P4" value="+6 pts" />
           <Row label="P5 à P10 (Q3)" value="+5 pts" />
-          <Row label="Éliminé en Q2 (P11-P15)" value="+2 pts" />
-          <Row label="Éliminé en Q1 (P16-P20)" value="+1 pt" />
+          <Row label="Éliminé en Q2 (P11-P16)" value="+2 pts" />
+          <Row label="Éliminé en Q1 (P17-P22)" value="+1 pt" />
         </Section>
 
         {/* Course */}
@@ -105,8 +105,8 @@ export default function ReglesPage() {
             <Row label="P3" value="+4 pts" />
             <Row label="P4" value="+3 pts" />
             <Row label="P5 à P10 (SQ3)" value="+2 pts" />
-            <Row label="Éliminé en SQ2 (P11-P15)" value="+1 pt" />
-            <Row label="Éliminé en SQ1 (P16+)" value="0 pt" />
+            <Row label="Éliminé en SQ2 (P11-P16)" value="+1 pt" />
+            <Row label="Éliminé en SQ1 (P17+)" value="0 pt" />
           </div>
           <div>
             <p className="text-gray-400 text-xs font-medium mb-2">Sprint Race (barème F1 officiel, sans bonus/malus)</p>
