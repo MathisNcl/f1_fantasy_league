@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { LeaderboardEntry } from "@/types";
 
 type Props = {
@@ -17,12 +18,13 @@ export default function Leaderboard({ entries, currentUserId }: Props) {
       ) : (
         <div className="space-y-2">
           {entries.map((entry, index) => (
-            <div
+            <Link
               key={entry.userId}
+              href={`/joueur/${entry.userId}`}
               className={`flex items-center justify-between px-4 py-3 rounded-lg transition-colors ${
                 entry.userId === currentUserId
-                  ? "bg-red-950 border border-red-800"
-                  : "bg-gray-800 hover:bg-gray-750"
+                  ? "bg-red-950 border border-red-800 hover:bg-red-900"
+                  : "bg-gray-800 hover:bg-gray-700"
               }`}
             >
               <div className="flex items-center gap-3">
@@ -52,7 +54,7 @@ export default function Leaderboard({ entries, currentUserId }: Props) {
                   {entry.totalPoints} pts
                 </span>
               </div>
-            </div>
+            </Link>
           ))}
         </div>
       )}
