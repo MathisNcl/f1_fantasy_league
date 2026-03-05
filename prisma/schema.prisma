@@ -90,6 +90,13 @@ model DriverResult {
   sprintQualiPos Int?       // Position en sprint qualifying (SQ1/SQ2/SQ3) = grille sprint.
   sprintRacePos  Int?       // Position d'arrivée du sprint. Null si DNF/DNS.
   sprintIsDnf    Boolean    @default(false)
+  // Scoring pré-calculé (base, sans multiplicateur énergie/stratégie)
+  scoringQualiPts      Float?   // Points de qualifications
+  scoringRacePts       Float?   // Points de course (F1 pts + pos gain/loss + FL + DNF)
+  scoringSprintQualiPts Float?  // Points de sprint qualifying
+  scoringSprintRacePts Float?   // Points de sprint course
+  scoringPosGainPts    Float?   // Points issus des places remontées (inclus dans scoringRacePts)
+  scoringPosLost       Boolean? // A perdu des places par rapport à la grille
   raceResult     RaceResult @relation(fields: [raceResultId], references: [id], onDelete: Cascade)
 
   @@unique([raceResultId, driverCode])

@@ -29,6 +29,7 @@ export default function Navbar({ userName, isAdmin, signOutForm }: Props) {
         {/* Desktop nav */}
         <nav className="hidden sm:flex items-center gap-6">
           <Link href="/dashboard" className={linkClass}>Dashboard</Link>
+          <Link href="/pilotes" className={linkClass}>Pilotes</Link>
           <Link href="/regles" className={linkClass}>Règles</Link>
           {isAdmin && (
             <Link href="/admin" className="text-yellow-400 hover:text-yellow-300 transition-colors text-sm font-medium">
@@ -57,6 +58,9 @@ export default function Navbar({ userName, isAdmin, signOutForm }: Props) {
         <nav className="sm:hidden border-t border-gray-800 px-4 py-4 space-y-3" onClick={() => setOpen(false)}>
           <Link href="/dashboard" className="block text-gray-300 hover:text-white text-sm font-medium py-1">
             Dashboard
+          </Link>
+          <Link href="/pilotes" className="block text-gray-300 hover:text-white text-sm font-medium py-1">
+            Pilotes
           </Link>
           <Link href="/regles" className="block text-gray-300 hover:text-white text-sm font-medium py-1">
             Règles

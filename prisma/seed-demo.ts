@@ -9,6 +9,7 @@ import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import {
   calculateAllScoresWithBreakdown,
+  computeDriverScoringStats,
   type PickData,
   type DriverResultData,
 } from "../src/lib/scoring";
@@ -197,26 +198,20 @@ async function main() {
 
     // Sauvegarde DriverResults en DB
     for (const dr of driverResults) {
+      const scoring = computeDriverScoringStats(dr, rr.fastestLap);
+      const baseFields = {
+        qualifyingPos:  dr.qualifyingPos,
+        racePos:        dr.racePos,
+        isDnf:          dr.isDnf,
+        sprintQualiPos: dr.sprintQualiPos ?? null,
+        sprintRacePos:  dr.sprintRacePos  ?? null,
+        sprintIsDnf:    dr.sprintIsDnf,
+        ...scoring,
+      };
       await prisma.driverResult.upsert({
         where: { raceResultId_driverCode: { raceResultId: dbRaceResult.id, driverCode: dr.driverCode } },
-        update: {
-          qualifyingPos: dr.qualifyingPos,
-          racePos:       dr.racePos,
-          isDnf:         dr.isDnf,
-          sprintQualiPos: dr.sprintQualiPos ?? null,
-          sprintRacePos:  dr.sprintRacePos  ?? null,
-          sprintIsDnf:    dr.sprintIsDnf,
-        },
-        create: {
-          raceResultId:   dbRaceResult.id,
-          driverCode:     dr.driverCode,
-          qualifyingPos:  dr.qualifyingPos,
-          racePos:        dr.racePos,
-          isDnf:          dr.isDnf,
-          sprintQualiPos: dr.sprintQualiPos ?? null,
-          sprintRacePos:  dr.sprintRacePos  ?? null,
-          sprintIsDnf:    dr.sprintIsDnf,
-        },
+        update: baseFields,
+        create: { raceResultId: dbRaceResult.id, driverCode: dr.driverCode, ...baseFields },
       });
     }
 

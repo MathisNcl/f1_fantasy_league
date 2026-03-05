@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { calculateAllScoresWithBreakdown, DriverResultData } from "@/lib/scoring";
+import { calculateAllScoresWithBreakdown, computeDriverScoringStats, DriverResultData } from "@/lib/scoring";
 import { DRIVERS } from "@/lib/constants";
 
 export async function POST(request: Request) {
@@ -39,31 +39,20 @@ export async function POST(request: Request) {
 
   // Mettre à jour les DriverResult (upsert par driverCode)
   for (const dr of driverResults) {
+    const scoring = computeDriverScoringStats(dr, fastestLap);
+    const baseFields = {
+      qualifyingPos: dr.qualifyingPos,
+      racePos: dr.racePos,
+      isDnf: dr.isDnf,
+      sprintQualiPos: dr.sprintQualiPos ?? null,
+      sprintRacePos: dr.sprintRacePos ?? null,
+      sprintIsDnf: dr.sprintIsDnf ?? false,
+      ...scoring,
+    };
     await prisma.driverResult.upsert({
-      where: {
-        raceResultId_driverCode: {
-          raceResultId: raceResult.id,
-          driverCode: dr.driverCode,
-        },
-      },
-      update: {
-        qualifyingPos: dr.qualifyingPos,
-        racePos: dr.racePos,
-        isDnf: dr.isDnf,
-        sprintQualiPos: dr.sprintQualiPos ?? null,
-        sprintRacePos: dr.sprintRacePos ?? null,
-        sprintIsDnf: dr.sprintIsDnf ?? false,
-      },
-      create: {
-        raceResultId: raceResult.id,
-        driverCode: dr.driverCode,
-        qualifyingPos: dr.qualifyingPos,
-        racePos: dr.racePos,
-        isDnf: dr.isDnf,
-        sprintQualiPos: dr.sprintQualiPos ?? null,
-        sprintRacePos: dr.sprintRacePos ?? null,
-        sprintIsDnf: dr.sprintIsDnf ?? false,
-      },
+      where: { raceResultId_driverCode: { raceResultId: raceResult.id, driverCode: dr.driverCode } },
+      update: baseFields,
+      create: { raceResultId: raceResult.id, driverCode: dr.driverCode, ...baseFields },
     });
   }
 
