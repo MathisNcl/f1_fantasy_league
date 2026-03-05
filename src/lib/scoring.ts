@@ -506,6 +506,45 @@ export function calculateAllScores(
 }
 
 // ---------------------------------------------------------------------------
+// Calcule les stats de scoring de base pour un pilote (sans énergie/stratégie)
+// Stockées directement sur DriverResult lors de la saisie des résultats.
+// ---------------------------------------------------------------------------
+export function computeDriverScoringStats(dr: DriverResultData, fastestLap: string) {
+  const scoringQualiPts = dr.qualifyingPos !== null
+    ? getQualiPoints(dr.qualifyingPos)
+    : null;
+
+  const scoringRacePts = (dr.racePos !== null || dr.isDnf)
+    ? getRacePtsForDriver(dr, fastestLap)
+    : null;
+
+  const scoringSprintQualiPts = dr.sprintQualiPos !== null
+    ? getSprintQualiPoints(dr.sprintQualiPos)
+    : null;
+
+  const scoringSprintRacePts = (dr.sprintRacePos !== null && !dr.sprintIsDnf)
+    ? getSprintRacePtsForDriver(dr)
+    : null;
+
+  const scoringPosGainPts = (!dr.isDnf && dr.qualifyingPos !== null && dr.racePos !== null)
+    ? Math.max(0, dr.qualifyingPos - dr.racePos)
+    : null;
+
+  const scoringPosLost = (!dr.isDnf && dr.qualifyingPos !== null && dr.racePos !== null)
+    ? dr.qualifyingPos < dr.racePos
+    : null;
+
+  return {
+    scoringQualiPts,
+    scoringRacePts,
+    scoringSprintQualiPts,
+    scoringSprintRacePts,
+    scoringPosGainPts,
+    scoringPosLost,
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Retourne le nombre de tokens restants pour chaque stratégie
 // ---------------------------------------------------------------------------
 export function getRemainingTokens(
