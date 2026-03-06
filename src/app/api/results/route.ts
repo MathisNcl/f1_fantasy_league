@@ -170,8 +170,8 @@ export async function POST(request: Request) {
           energy -= 0.2; // -20% sélectionné
           if (code === loserCode) energy -= 0.05; // -5% perdant
         }
-      } else {
-        // Non sélectionné : +5% de récupération
+      } else if (!isTeamDriver) {
+        // Non sélectionné et pas pilote de l'écurie : +5% de récupération
         energy = Math.min(1.0, energy + 0.05);
       }
 

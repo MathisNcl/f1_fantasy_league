@@ -167,7 +167,7 @@ export default function ReglesPage() {
                 { label: "Pilote sélectionné", effect: "−20%", color: "text-red-400" },
                 { label: "Pilote perdant parmi vos 2 (course principale)", effect: "−5% supplémentaire", color: "text-red-400" },
                 { label: "Pilote de l'écurie choisie", effect: "−5%", color: "text-orange-400" },
-                { label: "Pilote non sélectionné", effect: "+5% (plafonné à 100%)", color: "text-green-400" },
+                { label: "Pilote non sélectionné (hors écurie choisie)", effect: "+5% (plafonné à 100%)", color: "text-green-400" },
               ].map((item) => (
                 <div key={item.label} className="flex items-center justify-between bg-gray-800/60 rounded px-3 py-1.5">
                   <span className="text-gray-300 text-xs">{item.label}</span>
