@@ -2,10 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { transporter } from "@/lib/email";
 
-// Fenêtre de détection : deadline entre now+20h et now+28h
-// Le cron tourne à 9h UTC chaque jour ; la fenêtre absorbe les décalages.
-const WINDOW_MIN_MS = 20 * 60 * 60 * 1000;
-const WINDOW_MAX_MS = 28 * 60 * 60 * 1000;
+// Fenêtre de détection : deadline entre now+12h et now+36h
+// Le cron tourne à 9h UTC chaque jour ; la large fenêtre couvre les deadlines
+// matinales (ex: 5h CET = 4h UTC = ~19h après un cron à 9h UTC).
+const WINDOW_MIN_MS = 12 * 60 * 60 * 1000;
+const WINDOW_MAX_MS = 36 * 60 * 60 * 1000;
 
 function buildEmailHtml(userName: string, raceName: string, deadline: Date, appUrl: string) {
   const deadlineStr = deadline.toLocaleString("fr-FR", {
