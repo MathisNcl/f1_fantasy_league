@@ -132,19 +132,19 @@ function PodiumCard({
 }) {
   const medals = ["🥇", "🥈", "🥉"];
   return (
-    <div className="flex flex-col items-center">
-      <div className="text-white font-bold text-lg mb-0.5">{driver.avgTotal} pts</div>
-      <div className="text-gray-400 text-xs mb-3">{driver.count} GP</div>
+    <div className="flex flex-col items-center min-w-0">
+      <div className="text-white font-bold text-sm sm:text-lg mb-0.5">{driver.avgTotal} pts</div>
+      <div className="text-gray-400 text-xs mb-2 sm:mb-3">{driver.count} GP</div>
       <div
-        className="relative w-24 h-24 rounded-full overflow-hidden mb-2"
-        style={{ boxShadow: `0 0 0 4px ${driver.teamColor}` }}
+        className="relative w-14 h-14 sm:w-24 sm:h-24 rounded-full overflow-hidden mb-2 shrink-0"
+        style={{ boxShadow: `0 0 0 3px ${driver.teamColor}` }}
       >
         <Image src={`/${driver.code}.webp`} alt={driver.name} fill className="object-cover object-top" />
       </div>
-      <div className="text-white font-semibold text-sm text-center mb-1">{driver.name}</div>
-      <div className="text-xs mb-3" style={{ color: driver.teamColor }}>{driver.team}</div>
+      <div className="text-white font-semibold text-xs sm:text-sm text-center mb-0.5 px-1 leading-tight">{driver.name}</div>
+      <div className="text-xs mb-2 sm:mb-3 truncate max-w-full px-1" style={{ color: driver.teamColor }}>{driver.team}</div>
       <div
-        className="w-28 flex flex-col items-center justify-start pt-3 rounded-t-lg font-bold text-2xl"
+        className="w-16 sm:w-28 flex flex-col items-center justify-start pt-2 sm:pt-3 rounded-t-lg font-bold text-xl sm:text-2xl"
         style={{
           height: `${stepHeight}px`,
           background: `linear-gradient(to bottom, ${driver.teamColor}33, ${driver.teamColor}11)`,
@@ -198,8 +198,8 @@ export default async function PilotesPage() {
       ) : (
         <>
           {/* Podium */}
-          <div className="bg-gray-900 rounded-xl border border-gray-800 p-8">
-            <div className="flex items-end justify-center gap-6">
+          <div className="bg-gray-900 rounded-xl border border-gray-800 p-4 sm:p-8">
+            <div className="flex items-end justify-center gap-2 sm:gap-6">
               {top3[2] && <PodiumCard driver={top3[2]} rank={3} stepHeight={80} />}
               {top3[0] && <PodiumCard driver={top3[0]} rank={1} stepHeight={130} />}
               {top3[1] && <PodiumCard driver={top3[1]} rank={2} stepHeight={100} />}

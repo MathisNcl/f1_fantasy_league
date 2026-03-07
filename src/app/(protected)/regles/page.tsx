@@ -25,12 +25,12 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 function Row({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
-    <div className="flex items-center justify-between py-2 border-b border-gray-800 last:border-0">
-      <div>
+    <div className="flex items-start justify-between gap-3 py-2 border-b border-gray-800 last:border-0">
+      <div className="flex-1 min-w-0">
         <span className="text-gray-300 text-sm">{label}</span>
-        {sub && <p className="text-gray-500 text-xs mt-0.5">{sub}</p>}
+        {sub && <p className="text-gray-500 text-xs mt-0.5 break-words">{sub}</p>}
       </div>
-      <span className="text-white font-bold text-sm whitespace-nowrap ml-4">{value}</span>
+      <span className="text-white font-bold text-sm whitespace-nowrap shrink-0">{value}</span>
     </div>
   );
 }
@@ -41,7 +41,7 @@ export default function ReglesPage() {
       <div>
         <h1 className="text-3xl font-bold text-white">Règles du jeu</h1>
         <p className="text-gray-400 mt-1">
-          Saison 2026 — Picks soumis avant la fin des Essais Libres 3
+          Saison 2026 — Picks soumis avant le début de chaque qualif
         </p>
       </div>
 
@@ -51,24 +51,24 @@ export default function ReglesPage() {
         <Section title="Picks par week-end">
           <ul className="space-y-2 text-sm text-gray-300">
             <li className="flex gap-2">
-              <span className="text-red-400 font-bold">•</span>
-              Choisis <strong className="text-white">2 pilotes</strong> et <strong className="text-white">1 écurie</strong> chaque week-end
+              <span className="text-red-400 font-bold shrink-0">•</span>
+              <span>Choisis <strong className="text-white">2 pilotes</strong> et <strong className="text-white">1 écurie</strong> chaque week-end</span>
             </li>
             <li className="flex gap-2">
-              <span className="text-red-400 font-bold">•</span>
-              Chaque pilote a une <strong className="text-white">énergie</strong> (0–100%) qui multiplie ses points positifs
+              <span className="text-red-400 font-bold shrink-0">•</span>
+              <span>Chaque pilote a une <strong className="text-white">énergie</strong> (0–100%) qui multiplie ses points positifs</span>
             </li>
             <li className="flex gap-2">
-              <span className="text-red-400 font-bold">•</span>
-              Choisis aussi <strong className="text-white">1 stratégie</strong> parmi les options disponibles
+              <span className="text-red-400 font-bold shrink-0">•</span>
+              <span>Choisis aussi <strong className="text-white">1 stratégie</strong> parmi les options disponibles</span>
             </li>
             <li className="flex gap-2">
-              <span className="text-red-400 font-bold">•</span>
-              Deadline : <strong className="text-white">fin des Essais Libres 3</strong> (vendredi soir / samedi matin)
+              <span className="text-red-400 font-bold shrink-0">•</span>
+              <span>Deadline : <strong className="text-white">fin des Essais Libres 3</strong> (vendredi soir / samedi matin)</span>
             </li>
             <li className="flex gap-2 bg-purple-950 border border-purple-800 rounded-lg px-3 py-2">
-              <span className="text-purple-400 font-bold">•</span>
-              Week-end Sprint : qualifications sprint + course sprint inclus dans le score (en plus de la course principale)
+              <span className="text-purple-400 font-bold shrink-0">•</span>
+              <span>Week-end Sprint : qualifications sprint + course sprint inclus dans le score (en plus de la course principale)</span>
             </li>
           </ul>
         </Section>
@@ -90,7 +90,7 @@ export default function ReglesPage() {
           <p className="text-gray-500 text-xs mb-3">Par pilote choisi</p>
           <Row label="Points F1 officiels" value="Selon classement" sub="P1=25, P2=18, P3=15, P4=12, P5=10, P6=8, P7=6, P8=4, P9=2, P10=1" />
           <Row label="Places remontées vs grille" value="+1 pt / place" />
-          <Row label="Positions perdues vs grille" value="-2 pts (pénalité fixe)" />
+          <Row label="Positions perdues vs grille" value="-2 pts (fixe)" />
           <Row label="Abandon (DNF)" value="-5 pts" />
           <Row label="Meilleur tour en course" value="+5 pts" />
         </Section>
@@ -165,13 +165,13 @@ export default function ReglesPage() {
             <div className="space-y-1.5">
               {[
                 { label: "Pilote sélectionné", effect: "−20%", color: "text-red-400" },
-                { label: "Pilote perdant parmi vos 2 (course principale)", effect: "−5% supplémentaire", color: "text-red-400" },
+                { label: "Pilote perdant parmi vos 2 (course principale)", effect: "−5% suppl.", color: "text-red-400" },
                 { label: "Pilote de l'écurie choisie", effect: "−5%", color: "text-orange-400" },
-                { label: "Pilote non sélectionné (hors écurie choisie)", effect: "+5% (plafonné à 100%)", color: "text-green-400" },
+                { label: "Pilote non sélectionné (hors écurie choisie)", effect: "+5% (max 100%)", color: "text-green-400" },
               ].map((item) => (
-                <div key={item.label} className="flex items-center justify-between bg-gray-800/60 rounded px-3 py-1.5">
-                  <span className="text-gray-300 text-xs">{item.label}</span>
-                  <span className={`font-bold text-xs ${item.color}`}>{item.effect}</span>
+                <div key={item.label} className="flex items-start justify-between gap-2 bg-gray-800/60 rounded px-3 py-1.5">
+                  <span className="text-gray-300 text-xs flex-1 min-w-0">{item.label}</span>
+                  <span className={`font-bold text-xs shrink-0 ${item.color}`}>{item.effect}</span>
                 </div>
               ))}
             </div>
@@ -197,8 +197,8 @@ export default function ReglesPage() {
                 key={s.code}
                 className="flex items-start gap-3 bg-gray-800/60 rounded-lg border border-gray-700 p-4"
               >
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-1">
+                <div className="flex-1 min-w-0">
+                  <div className="flex flex-wrap items-center gap-2 mb-1">
                     <span className="text-white font-semibold text-sm">{s.label}</span>
                     <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${colorClass}`}>
                       {s.tokens === 7 ? "∞ illimité" : `${s.tokens}× par saison`}
