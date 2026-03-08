@@ -8,13 +8,33 @@ import NextRacePicksStatus from "@/components/dashboard/NextRacePicksStatus";
 import { getRemainingTokens } from "@/lib/scoring";
 import { DRIVERS } from "@/lib/constants";
 
-async function getNextRace() {
-  const now = new Date();
+// Course dont la deadline est passée mais sans résultat encore (week-end en cours)
+async function getActiveRace(now: Date, year: number) {
   return prisma.race.findFirst({
     where: {
-      date: { gt: now },
-      season: now.getFullYear(),
+      season: year,
+      result: { is: null },
+      OR: [
+        { deadline: { lte: now } },
+        { deadline: null, date: { lte: now } },
+      ],
     },
+    orderBy: { date: "desc" },
+  });
+}
+
+// Prochaine course disponible pour les picks.
+// Si une course active existe (week-end en cours), on attend minuit UTC
+// du lendemain de sa date avant d'afficher la suivante.
+async function getNextPickRace(now: Date, year: number, activeRaceDate: Date | null) {
+  if (activeRaceDate) {
+    const showAfter = new Date(activeRaceDate);
+    showAfter.setUTCDate(showAfter.getUTCDate() + 1);
+    showAfter.setUTCHours(0, 0, 0, 0); // minuit UTC ≈ 01h00 CET ≈ lundi matin
+    if (now < showAfter) return null;
+  }
+  return prisma.race.findFirst({
+    where: { date: { gt: now }, season: year },
     orderBy: { date: "asc" },
   });
 }
@@ -63,7 +83,7 @@ async function getMyPickForRace(userId: string, raceId: number) {
   });
 }
 
-async function getNextRacePicksStatus(raceId: number) {
+async function getRacePicksStatus(raceId: number) {
   const [allUsers, picks] = await Promise.all([
     prisma.user.findMany({ select: { id: true, name: true } }),
     prisma.pick.findMany({
@@ -80,13 +100,11 @@ async function getNextRacePicksStatus(raceId: number) {
   }));
 }
 
-async function getLastRaceRecap(currentYear: number, nextRaceId: number | undefined) {
-  // Dernière course avec un résultat enregistré (hors prochaine course)
+async function getLastRaceRecap(currentYear: number) {
   const lastRace = await prisma.race.findFirst({
     where: {
       season: currentYear,
       result: { isNot: null },
-      ...(nextRaceId ? { id: { not: nextRaceId } } : {}),
     },
     orderBy: { date: "desc" },
   });
@@ -94,22 +112,14 @@ async function getLastRaceRecap(currentYear: number, nextRaceId: number | undefi
   if (!lastRace) return null;
 
   const [picks, scores, allUsers] = await Promise.all([
-    prisma.pick.findMany({
-      where: { raceId: lastRace.id },
-    }),
-    prisma.score.findMany({
-      where: { raceId: lastRace.id },
-    }),
-    prisma.user.findMany({
-      select: { id: true, name: true },
-    }),
+    prisma.pick.findMany({ where: { raceId: lastRace.id } }),
+    prisma.score.findMany({ where: { raceId: lastRace.id } }),
+    prisma.user.findMany({ select: { id: true, name: true } }),
   ]);
 
   const entries = picks
     .map((p) => {
-      const drsTargetUser = p.drsTarget
-        ? allUsers.find((u) => u.id === p.drsTarget)
-        : null;
+      const drsTargetUser = p.drsTarget ? allUsers.find((u) => u.id === p.drsTarget) : null;
       const scoreRecord = scores.find((s) => s.userId === p.userId);
       return {
         userId: p.userId,
@@ -133,10 +143,13 @@ async function getLastRaceRecap(currentYear: number, nextRaceId: number | undefi
 export default async function DashboardPage() {
   const session = await auth();
   const userId = session!.user!.id!;
-  const currentYear = new Date().getFullYear();
+  const now = new Date();
+  const currentYear = now.getFullYear();
 
-  const [nextRace, leaderboard, myPicks, allUsers] = await Promise.all([
-    getNextRace(),
+  const activeRace = await getActiveRace(now, currentYear);
+
+  const [nextPickRace, leaderboard, myPicks, allUsers] = await Promise.all([
+    getNextPickRace(now, currentYear, activeRace?.date ?? null),
     getLeaderboard(),
     getMyPicks(userId),
     prisma.user.findMany({
@@ -145,31 +158,46 @@ export default async function DashboardPage() {
     }),
   ]);
 
+  // Course affichée dans NextRacePicksStatus :
+  // - activeRace si le week-end est en cours (deadline passée, picks révélés)
+  // - sinon nextPickRace si on est en semaine de course (picks cachés avant deadline)
+  const raceForStatus = activeRace ?? nextPickRace;
+
   const [existingPick, lastRaceRecap, picksStatus] = await Promise.all([
-    nextRace ? getMyPickForRace(userId, nextRace.id) : Promise.resolve(null),
-    getLastRaceRecap(currentYear, nextRace?.id),
-    nextRace ? getNextRacePicksStatus(nextRace.id) : Promise.resolve([]),
+    nextPickRace ? getMyPickForRace(userId, nextPickRace.id) : Promise.resolve(null),
+    getLastRaceRecap(currentYear),
+    raceForStatus ? getRacePicksStatus(raceForStatus.id) : Promise.resolve([]),
   ]);
 
-  // Picks de la saison courante, hors pick de la prochaine course
+  // Picks de la saison courante, hors pick de la prochaine course à picker
   const pastSeasonPicks = myPicks.filter(
-    (p) => p.race.season === currentYear && p.raceId !== nextRace?.id
+    (p) => p.race.season === currentYear && p.raceId !== nextPickRace?.id
   );
-
-  // Tokens restants par stratégie (picks validés sauf le pick courant)
   const remainingTokens = getRemainingTokens(pastSeasonPicks, currentYear);
 
-  // Énergie courante par pilote (pour afficher dans le formulaire de picks)
   const energyRecords = await prisma.driverEnergy.findMany({
     where: { userId, season: currentYear },
   });
   const energyMap: Record<string, number> = {};
-  for (const driver of DRIVERS) {
-    energyMap[driver.code] = 1.0; // 100% par défaut
-  }
-  for (const rec of energyRecords) {
-    energyMap[rec.driverCode] = rec.energy;
-  }
+  for (const driver of DRIVERS) energyMap[driver.code] = 1.0;
+  for (const rec of energyRecords) energyMap[rec.driverCode] = rec.energy;
+
+  // Afficher le bloc picks status ?
+  const showPicksStatus = (() => {
+    if (!raceForStatus || picksStatus.length === 0) return false;
+    if (activeRace) return true; // semaine de course passée → toujours visible
+    if (!nextPickRace) return false;
+    const deadline = nextPickRace.deadline ?? nextPickRace.date;
+    const msToDeadline = deadline.getTime() - now.getTime();
+    return msToDeadline <= 7 * 24 * 60 * 60 * 1000; // dans la semaine du GP
+  })();
+
+  // La deadline passée concerne la course affichée dans le bloc status
+  const statusDeadlinePassed = activeRace
+    ? true
+    : nextPickRace
+      ? now >= (nextPickRace.deadline ?? nextPickRace.date)
+      : false;
 
   return (
     <div className="space-y-8">
@@ -181,9 +209,9 @@ export default async function DashboardPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Prochain GP - Formulaire de picks */}
         <div>
-          {nextRace ? (
+          {nextPickRace ? (
             <PicksForm
-              race={nextRace}
+              race={nextPickRace}
               existingPick={existingPick}
               energyMap={energyMap}
               remainingTokens={remainingTokens}
@@ -195,7 +223,9 @@ export default async function DashboardPage() {
                 Prochain Grand Prix
               </h2>
               <p className="text-gray-400">
-                Aucune course à venir pour cette saison.
+                {activeRace
+                  ? `Week-end ${activeRace.name} en cours — les paris pour le prochain GP ouvrent lundi.`
+                  : "Aucune course à venir pour cette saison."}
               </p>
             </div>
           )}
@@ -215,28 +245,19 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      {/* Statut des paris pour le prochain GP */}
-      {(() => {
-        if (!nextRace || picksStatus.length === 0) return null;
-        const now = new Date();
-        const deadline = nextRace.deadline ?? nextRace.date;
-        const msToDeadline = deadline.getTime() - now.getTime();
-        const isRaceWeek = msToDeadline <= 7 * 24 * 60 * 60 * 1000;
-        const deadlinePassed = now >= deadline;
-        if (!isRaceWeek && !deadlinePassed) return null;
-        return (
-          <NextRacePicksStatus
-            raceName={nextRace.name}
-            deadline={deadline.toISOString()}
-            deadlinePassed={deadlinePassed}
-            entries={picksStatus.map((p) => ({
-              ...p,
-              isCurrentUser: p.id === userId,
-              pick: deadlinePassed ? p.pick : null,
-            }))}
-          />
-        );
-      })()}
+      {/* Statut des paris */}
+      {showPicksStatus && raceForStatus && (
+        <NextRacePicksStatus
+          raceName={raceForStatus.name}
+          deadline={(raceForStatus.deadline ?? raceForStatus.date).toISOString()}
+          deadlinePassed={statusDeadlinePassed}
+          entries={picksStatus.map((p) => ({
+            ...p,
+            isCurrentUser: p.id === userId,
+            pick: statusDeadlinePassed ? p.pick : null,
+          }))}
+        />
+      )}
 
       {/* Historique des picks */}
       <MyPicksHistory picks={myPicks} />
