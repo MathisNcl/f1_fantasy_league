@@ -342,10 +342,16 @@ function calculateIndividualBreakdown(
   let bonusPts = 0;
   const dr1Finished = dr1 && !dr1.isDnf && dr1.racePos !== null;
   const dr2Finished = dr2 && !dr2.isDnf && dr2.racePos !== null;
-  if (dr1Finished && dr2Finished) {
-    if (dr1!.racePos! < dr2!.racePos!) bonusPts += 5;
-    const positions = new Set([dr1!.racePos!, dr2!.racePos!]);
-    if (positions.has(1) && positions.has(2)) bonusPts += 20;
+  const dr2Dnf = dr2?.isDnf ?? false;
+  if (dr1Finished) {
+    if (dr2Dnf) {
+      // driver1 terminé, driver2 abandon → driver1 devant
+      bonusPts += 5;
+    } else if (dr2Finished) {
+      if (dr1!.racePos! < dr2!.racePos!) bonusPts += 5;
+      const positions = new Set([dr1!.racePos!, dr2!.racePos!]);
+      if (positions.has(1) && positions.has(2)) bonusPts += 20;
+    }
   }
 
   // --- Super Dur ---
