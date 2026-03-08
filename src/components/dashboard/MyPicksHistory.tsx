@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import React, { useState } from "react";
 import { Race, Pick, Score } from "@prisma/client";
 import { DRIVERS, STRATEGIES } from "@/lib/constants";
 import { ScoreBreakdown } from "@/lib/scoring";
@@ -249,9 +249,8 @@ export default function MyPicksHistory({ picks }: Props) {
                 const hasBd = bd !== null;
 
                 return (
-                  <>
+                  <React.Fragment key={pick.id}>
                     <tr
-                      key={pick.id}
                       onClick={() => toggle(pick.id, hasBd)}
                       className={`border-b border-gray-800 transition-colors ${
                         hasBd
@@ -312,7 +311,7 @@ export default function MyPicksHistory({ picks }: Props) {
                         </td>
                       </tr>
                     )}
-                  </>
+                  </React.Fragment>
                 );
               })}
             </tbody>

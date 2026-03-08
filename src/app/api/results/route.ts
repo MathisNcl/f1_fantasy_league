@@ -8,7 +8,7 @@ export async function POST(request: Request) {
   const session = await auth();
   const user = session?.user as { role?: string } | undefined;
 
-  if (!session || user?.role !== "ADMIN") {
+  if (!session || (user?.role !== "ADMIN" && user?.role !== "CONTRIBUTOR")) {
     return NextResponse.json({ error: "Accès refusé" }, { status: 403 });
   }
 

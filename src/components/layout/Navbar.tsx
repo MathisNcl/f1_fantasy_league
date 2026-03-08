@@ -7,10 +7,11 @@ import Image from "next/image";
 type Props = {
   userName: string;
   isAdmin: boolean;
+  isContributor: boolean;
   signOutForm: React.ReactNode;
 };
 
-export default function Navbar({ userName, isAdmin, signOutForm }: Props) {
+export default function Navbar({ userName, isAdmin, isContributor, signOutForm }: Props) {
   const [open, setOpen] = useState(false);
 
   const linkClass =
@@ -31,6 +32,11 @@ export default function Navbar({ userName, isAdmin, signOutForm }: Props) {
           <Link href="/dashboard" className={linkClass}>Dashboard</Link>
           <Link href="/pilotes" className={linkClass}>Pilotes</Link>
           <Link href="/regles" className={linkClass}>Règles</Link>
+          {isContributor && !isAdmin && (
+            <Link href="/contributor" className="text-blue-400 hover:text-blue-300 transition-colors text-sm font-medium">
+              Résultats
+            </Link>
+          )}
           {isAdmin && (
             <Link href="/admin" className="text-yellow-400 hover:text-yellow-300 transition-colors text-sm font-medium">
               Admin
@@ -65,6 +71,11 @@ export default function Navbar({ userName, isAdmin, signOutForm }: Props) {
           <Link href="/regles" className="block text-gray-300 hover:text-white text-sm font-medium py-1">
             Règles
           </Link>
+          {isContributor && !isAdmin && (
+            <Link href="/contributor" className="block text-blue-400 hover:text-blue-300 text-sm font-medium py-1">
+              Résultats
+            </Link>
+          )}
           {isAdmin && (
             <Link href="/admin" className="block text-yellow-400 hover:text-yellow-300 text-sm font-medium py-1">
               Admin
