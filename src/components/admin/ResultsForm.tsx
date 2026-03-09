@@ -93,6 +93,37 @@ export default function ResultsForm({ races }: Props) {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [csvMessage, setCsvMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [importLoading, setImportLoading] = useState(false);
+  const [importMessage, setImportMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
+  async function handleJolpicaImport() {
+    if (!selectedRace) return;
+    setImportLoading(true);
+    setImportMessage(null);
+    try {
+      const params = new URLSearchParams({
+        round: String(selectedRace.round),
+        season: String(selectedRace.season),
+        hasSprint: String(selectedRace.hasSprint),
+      });
+      const res = await fetch(`/api/admin/jolpica?${params}`);
+      const data = await res.json();
+      if (!res.ok) {
+        setImportMessage({ type: "error", text: data.error ?? "Erreur Jolpica." });
+        return;
+      }
+      setRows(data.rows);
+      if (data.fastestLap) setFastestLap(data.fastestLap);
+      setImportMessage({
+        type: "success",
+        text: `${data.mapped} pilotes importés${data.fastestLap ? ` · FL : ${data.fastestLap}` : ""}.`,
+      });
+    } catch {
+      setImportMessage({ type: "error", text: "Impossible de contacter Jolpica." });
+    } finally {
+      setImportLoading(false);
+    }
+  }
 
   function handleCsvImport(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -203,23 +234,38 @@ export default function ResultsForm({ races }: Props) {
             </select>
           </div>
 
-          {/* Import CSV */}
+          {/* Import */}
           {raceId && (
-            <div className="flex items-center gap-3">
-              <input
-                ref={csvInputRef}
-                type="file"
-                accept=".csv,.txt"
-                onChange={handleCsvImport}
-                className="hidden"
-              />
-              <button
-                type="button"
-                onClick={() => csvInputRef.current?.click()}
-                className="flex items-center gap-2 px-3 py-2 bg-gray-700 hover:bg-gray-600 border border-gray-600 rounded-lg text-sm text-gray-200 transition-colors"
-              >
-                ↑ Importer CSV
-              </button>
+            <div className="space-y-2">
+              <div className="flex items-center gap-3 flex-wrap">
+                <button
+                  type="button"
+                  onClick={handleJolpicaImport}
+                  disabled={importLoading}
+                  className="flex items-center gap-2 px-3 py-2 bg-red-900/60 hover:bg-red-800/60 border border-red-700/50 rounded-lg text-sm text-red-200 transition-colors disabled:opacity-50"
+                >
+                  {importLoading ? "Chargement..." : "⬇ Importer depuis F1"}
+                </button>
+                <input
+                  ref={csvInputRef}
+                  type="file"
+                  accept=".csv,.txt"
+                  onChange={handleCsvImport}
+                  className="hidden"
+                />
+                <button
+                  type="button"
+                  onClick={() => csvInputRef.current?.click()}
+                  className="flex items-center gap-2 px-3 py-2 bg-gray-700 hover:bg-gray-600 border border-gray-600 rounded-lg text-sm text-gray-200 transition-colors"
+                >
+                  ↑ Importer CSV
+                </button>
+              </div>
+              {importMessage && (
+                <p className={`text-xs ${importMessage.type === "success" ? "text-green-400" : "text-red-400"}`}>
+                  {importMessage.text}
+                </p>
+              )}
               {csvMessage && (
                 <p className={`text-xs ${csvMessage.type === "success" ? "text-green-400" : "text-red-400"}`}>
                   {csvMessage.text}
