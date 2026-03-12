@@ -71,6 +71,7 @@ export type DriverBreakdown = {
   posGain: number;         // nombre de places remontées (0 si aucune)
   posLost: boolean;        // a perdu des positions
   posGainPts: number;      // pts rapportés par les positions remontées
+  tailPenalty: number;     // malus queue de peloton (-3/-2/-1/0)
   hasFastestLap: boolean;  // a réalisé le meilleur tour
   hasDnf: boolean;         // abandon
   qualiPts: number;        // points qualif principale (après ×2 si soft)
@@ -346,6 +347,8 @@ function calculateIndividualBreakdown(
   const d1posLost = !!(dr1 && !dr1.isDnf && dr1.qualifyingPos !== null && dr1.racePos !== null
     && dr1.qualifyingPos < dr1.racePos);
   const d1posGainPts = Math.min(ultraTendre ? d1posGain * 2 : d1posGain, 10);
+  const d1tailPenalty = (dr1 && !dr1.isDnf && dr1.racePos !== null && lastFinishPos > 0)
+    ? getTailPenalty(dr1.racePos, lastFinishPos) : 0;
   const d1hasFl = !!(dr1 && !dr1.isDnf && dr1.racePos !== null && dr1.driverCode === fastestLap);
 
   const d2posGain = (dr2 && !dr2.isDnf && dr2.qualifyingPos !== null && dr2.racePos !== null)
@@ -353,6 +356,8 @@ function calculateIndividualBreakdown(
   const d2posLost = !!(dr2 && !dr2.isDnf && dr2.qualifyingPos !== null && dr2.racePos !== null
     && dr2.qualifyingPos < dr2.racePos);
   const d2posGainPts = Math.min(ultraTendre ? d2posGain * 2 : d2posGain, 10);
+  const d2tailPenalty = (dr2 && !dr2.isDnf && dr2.racePos !== null && lastFinishPos > 0)
+    ? getTailPenalty(dr2.racePos, lastFinishPos) : 0;
   const d2hasFl = !!(dr2 && !dr2.isDnf && dr2.racePos !== null && dr2.driverCode === fastestLap);
 
   // --- Écurie ---
@@ -399,6 +404,7 @@ function calculateIndividualBreakdown(
       posGain: d1posGain,
       posLost: d1posLost,
       posGainPts: d1posGainPts,
+      tailPenalty: d1tailPenalty,
       hasFastestLap: d1hasFl,
       hasDnf: dr1?.isDnf ?? false,
       qualiPts: qualiPts1,
@@ -416,6 +422,7 @@ function calculateIndividualBreakdown(
       posGain: d2posGain,
       posLost: d2posLost,
       posGainPts: d2posGainPts,
+      tailPenalty: d2tailPenalty,
       hasFastestLap: d2hasFl,
       hasDnf: dr2?.isDnf ?? false,
       qualiPts: qualiPts2,

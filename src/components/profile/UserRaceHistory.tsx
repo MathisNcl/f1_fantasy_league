@@ -159,6 +159,12 @@ export default function UserRaceHistory({ races }: { races: RaceHistoryEntry[] }
                                 <span>−2</span>
                               </div>
                             )}
+                            {(d.tailPenalty ?? 0) < 0 && (
+                              <div className="flex justify-between text-red-400 pl-2">
+                                <span>↳ Queue de peloton</span>
+                                <span>{d.tailPenalty}</span>
+                              </div>
+                            )}
                             {d.sprintQualiPts > 0 && (
                               <div className="flex justify-between text-gray-300">
                                 <span>Sprint quali</span>

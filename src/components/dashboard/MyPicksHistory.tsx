@@ -93,6 +93,12 @@ function BreakdownPanel({ bd, hasSprint, pick }: {
               <span className="text-orange-400">−2 pts</span>
             </div>
           )}
+          {(d.tailPenalty ?? 0) < 0 && (
+            <div className="flex justify-between pl-2">
+              <span className="text-red-400">↳ Queue de peloton</span>
+              <span className="text-red-400">{d.tailPenalty} pts</span>
+            </div>
+          )}
           {hasSprintPts && (
             <>
               <div className="flex justify-between">

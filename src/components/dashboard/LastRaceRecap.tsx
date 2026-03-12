@@ -87,6 +87,7 @@ function DriverLine({ d, hasSprint }: { d: ScoreBreakdown["d1"]; hasSprint: bool
         {hasFl && <span className="text-purple-400"> (FL +5)</span>}
         {posGain > 0 && <span className="text-green-400"> (+{posGain}pl +{posGainPts})</span>}
         {posLost && <span className="text-orange-400"> (perte −2)</span>}
+        {(d.tailPenalty ?? 0) < 0 && <span className="text-red-400"> (queue {d.tailPenalty})</span>}
         {" = "}
         <span className="text-gray-300">{fmt(d.rawContrib)}</span>
       </p>
