@@ -82,17 +82,20 @@ export default function ReglesPage() {
           <Row label="P4" value="+6 pts" />
           <Row label="P5 à P10 (Q3)" value="+5 pts" />
           <Row label="Éliminé en Q2 (P11-P16)" value="+2 pts" />
-          <Row label="Éliminé en Q1 (P17-P22)" value="+1 pt" />
+          <Row label="Éliminé en Q1 (P17-P22)" value="0 pt" />
         </Section>
 
         {/* Course */}
         <Section title="Points — Course principale">
           <p className="text-gray-500 text-xs mb-3">Par pilote choisi</p>
           <Row label="Points F1 officiels" value="Selon classement" sub="P1=25, P2=18, P3=15, P4=12, P5=10, P6=8, P7=6, P8=4, P9=2, P10=1" />
-          <Row label="Places remontées vs grille" value="+1 pt / place" />
+          <Row label="Places remontées vs grille" value="+1 pt / place" sub="Maximum +10 pts" />
           <Row label="Positions perdues vs grille" value="-2 pts (fixe)" />
           <Row label="Abandon (DNF)" value="-5 pts" />
           <Row label="Meilleur tour en course" value="+5 pts" />
+          <Row label="Dernier finisher (hors DNF)" value="-3 pts" />
+          <Row label="Avant-dernier finisher (hors DNF)" value="-2 pts" />
+          <Row label="3e depuis la fin (hors DNF)" value="-1 pt" />
         </Section>
 
         {/* Sprint */}

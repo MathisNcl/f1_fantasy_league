@@ -134,7 +134,7 @@ function PodiumCard({
   return (
     <div className="flex flex-col items-center min-w-0">
       <div className="text-white font-bold text-sm sm:text-lg mb-0.5">{driver.avgTotal} pts</div>
-      <div className="text-gray-400 text-xs mb-2 sm:mb-3">{driver.count} GP</div>
+      <div className="text-gray-400 text-xs mb-2 sm:mb-3">Pick {driver.count} fois</div>
       <div
         className="relative w-14 h-14 sm:w-24 sm:h-24 rounded-full overflow-hidden mb-2 shrink-0"
         style={{ boxShadow: `0 0 0 3px ${driver.teamColor}` }}
@@ -182,7 +182,7 @@ export default async function PilotesPage() {
   const ranking = await getDriverStats(season);
 
   const hasData = ranking.some((d) => d.count > 0);
-  const top3 = ranking.filter((d) => d.count > 0).slice(0, 3);
+  const top3 = ranking.filter((d) => d.avgTotal > 0).slice(0, 3);
 
   return (
     <div className="space-y-10">

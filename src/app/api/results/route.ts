@@ -37,9 +37,15 @@ export async function POST(request: Request) {
     create: { raceId: Number(raceId), fastestLap, hasRedFlag, hasSprintRedFlag: hasSprintRedFlag ?? false },
   });
 
+  // Position du dernier finisher (hors DNF) pour le malus queue de peloton
+  const finisherPositions = driverResults
+    .filter((r) => !r.isDnf && r.racePos !== null)
+    .map((r) => r.racePos as number);
+  const lastFinishPos = finisherPositions.length > 0 ? Math.max(...finisherPositions) : 0;
+
   // Mettre à jour les DriverResult (upsert par driverCode)
   for (const dr of driverResults) {
-    const scoring = computeDriverScoringStats(dr, fastestLap);
+    const scoring = computeDriverScoringStats(dr, fastestLap, lastFinishPos);
     const baseFields = {
       qualifyingPos: dr.qualifyingPos,
       racePos: dr.racePos,

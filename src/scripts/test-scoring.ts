@@ -152,15 +152,15 @@ console.log("\n── Test 7 : Ultra Tendre (remontées ×2) ──");
   assert("score", s["A"], 108);
 }
 
-// ─── TEST 8 : Super Dur (+10 par DNF) ────────────────────────────────────────
+// ─── TEST 8 : Super Dur (+5 par DNF) ─────────────────────────────────────────
 // 2 DNFs (NOR + HAM)
 // NOR : qualiPts=8 + racePts=-5 = rawContrib=3 > 0 → energy 1.0 = 3
 // VER contrib = 37
 // McLaren: NOR DNF→0, PIA P3=15 → 7.5
 // bonus: 0 (NOR DNF)
-// superDurPts = 2 * 10 = 20
-// TOTAL = 37 + 3 + 7.5 + 0 + 20 = 67.5 → 68
-console.log("\n── Test 8 : Super Dur (+10/DNF) ──");
+// superDurPts = 2 * 5 = 10
+// TOTAL = 37 + 3 + 7.5 + 0 + 10 = 57.5 → 58
+console.log("\n── Test 8 : Super Dur (+5/DNF) ──");
 {
   const result: RaceResultData = {
     ...BASE_RESULT,

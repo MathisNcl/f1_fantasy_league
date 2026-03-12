@@ -73,7 +73,7 @@ export const STRATEGIES = [
   {
     code: "super_dur",
     label: "Super Dur",
-    description: "+10 pts par abandon dans la course",
+    description: "+5 pts par abandon dans la course",
     tokens: 2,
     color: "orange" as const,
   },

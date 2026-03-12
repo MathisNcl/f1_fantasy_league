@@ -106,7 +106,7 @@ function getQualiPoints(pos: number): number {
   if (pos === 4) return 6;
   if (pos <= 10) return 5;  // Q3 positions 5-10
   if (pos <= 16) return 2;  // éliminé en Q2
-  return 1;                  // éliminé en Q1
+  return 0;                  // éliminé en Q1
 }
 
 // ---------------------------------------------------------------------------
@@ -125,9 +125,19 @@ function getSprintQualiPoints(pos: number): number {
 // ---------------------------------------------------------------------------
 // Points de course principale pour un pilote
 // ---------------------------------------------------------------------------
+// Malus pour les 3 derniers finishers (hors DNF) : -3, -2, -1
+function getTailPenalty(racePos: number, lastFinishPos: number): number {
+  const diff = lastFinishPos - racePos;
+  if (diff === 0) return -3;
+  if (diff === 1) return -2;
+  if (diff === 2) return -1;
+  return 0;
+}
+
 function getRacePtsForDriver(
   dr: DriverResultData,
-  fastestLap: string
+  fastestLap: string,
+  lastFinishPos: number = 0
 ): number {
   if (dr.isDnf) return -5;
   if (dr.racePos === null) return 0;
@@ -136,11 +146,13 @@ function getRacePtsForDriver(
 
   if (dr.qualifyingPos !== null) {
     const gain = dr.qualifyingPos - dr.racePos;
-    if (gain > 0) pts += gain;      // +1 par place remontée
+    if (gain > 0) pts += Math.min(gain, 10);      // +1 par place remontée (max 10)
     else if (gain < 0) pts -= 2;   // -2 flat si perte de positions
   }
 
   if (dr.driverCode === fastestLap) pts += 5;
+
+  if (lastFinishPos > 0) pts += getTailPenalty(dr.racePos, lastFinishPos);
 
   return pts;
 }
@@ -148,7 +160,8 @@ function getRacePtsForDriver(
 // Variante Ultra Tendre : double les places remontées
 function calcRacePtsUltraTendre(
   dr: DriverResultData | null,
-  fastestLap: string
+  fastestLap: string,
+  lastFinishPos: number = 0
 ): number {
   if (!dr) return 0;
   if (dr.isDnf) return -5;
@@ -158,11 +171,13 @@ function calcRacePtsUltraTendre(
 
   if (dr.qualifyingPos !== null) {
     const gain = dr.qualifyingPos - dr.racePos;
-    if (gain > 0) pts += gain * 2;
+    if (gain > 0) pts += Math.min(gain * 2, 10);
     else if (gain < 0) pts -= 2;
   }
 
   if (dr.driverCode === fastestLap) pts += 5;
+
+  if (lastFinishPos > 0) pts += getTailPenalty(dr.racePos, lastFinishPos);
 
   return pts;
 }
@@ -261,6 +276,12 @@ function calculateIndividualBreakdown(
 
   const dnfCount = driverResults.filter((r) => r.isDnf).length;
 
+  // Position du dernier finisher (hors DNF) pour le malus queue de peloton
+  const finisherPositions = driverResults
+    .filter((r) => !r.isDnf && r.racePos !== null)
+    .map((r) => r.racePos as number);
+  const lastFinishPos = finisherPositions.length > 0 ? Math.max(...finisherPositions) : 0;
+
   // --- Qualifications principales ---
   let qualiPts1 = dr1?.qualifyingPos ? getQualiPoints(dr1.qualifyingPos) : 0;
   let qualiPts2 = dr2?.qualifyingPos ? getQualiPoints(dr2.qualifyingPos) : 0;
@@ -285,11 +306,11 @@ function calculateIndividualBreakdown(
   let racePts2 = 0;
 
   if (!fiaCancelled && pick.strategy === "ultra_tendre") {
-    racePts1 = calcRacePtsUltraTendre(dr1 ?? null, fastestLap);
-    racePts2 = calcRacePtsUltraTendre(dr2 ?? null, fastestLap);
+    racePts1 = calcRacePtsUltraTendre(dr1 ?? null, fastestLap, lastFinishPos);
+    racePts2 = calcRacePtsUltraTendre(dr2 ?? null, fastestLap, lastFinishPos);
   } else {
-    racePts1 = dr1 ? getRacePtsForDriver(dr1, fastestLap) : 0;
-    racePts2 = dr2 ? getRacePtsForDriver(dr2, fastestLap) : 0;
+    racePts1 = dr1 ? getRacePtsForDriver(dr1, fastestLap, lastFinishPos) : 0;
+    racePts2 = dr2 ? getRacePtsForDriver(dr2, fastestLap, lastFinishPos) : 0;
   }
 
   if (!fiaCancelled && pick.strategy === "hard") {
@@ -324,14 +345,14 @@ function calculateIndividualBreakdown(
     ? Math.max(0, dr1.qualifyingPos - dr1.racePos) : 0;
   const d1posLost = !!(dr1 && !dr1.isDnf && dr1.qualifyingPos !== null && dr1.racePos !== null
     && dr1.qualifyingPos < dr1.racePos);
-  const d1posGainPts = ultraTendre ? d1posGain * 2 : d1posGain;
+  const d1posGainPts = Math.min(ultraTendre ? d1posGain * 2 : d1posGain, 10);
   const d1hasFl = !!(dr1 && !dr1.isDnf && dr1.racePos !== null && dr1.driverCode === fastestLap);
 
   const d2posGain = (dr2 && !dr2.isDnf && dr2.qualifyingPos !== null && dr2.racePos !== null)
     ? Math.max(0, dr2.qualifyingPos - dr2.racePos) : 0;
   const d2posLost = !!(dr2 && !dr2.isDnf && dr2.qualifyingPos !== null && dr2.racePos !== null
     && dr2.qualifyingPos < dr2.racePos);
-  const d2posGainPts = ultraTendre ? d2posGain * 2 : d2posGain;
+  const d2posGainPts = Math.min(ultraTendre ? d2posGain * 2 : d2posGain, 10);
   const d2hasFl = !!(dr2 && !dr2.isDnf && dr2.racePos !== null && dr2.driverCode === fastestLap);
 
   // --- Écurie ---
@@ -357,7 +378,7 @@ function calculateIndividualBreakdown(
   // --- Super Dur ---
   let superDurPts = 0;
   if (!fiaCancelled && pick.strategy === "super_dur") {
-    superDurPts = dnfCount * 10;
+    superDurPts = dnfCount * 5;
   }
 
   let total = d1Final + d2Final + teamPts + sprintTeamPts + bonusPts + superDurPts;
@@ -515,13 +536,13 @@ export function calculateAllScores(
 // Calcule les stats de scoring de base pour un pilote (sans énergie/stratégie)
 // Stockées directement sur DriverResult lors de la saisie des résultats.
 // ---------------------------------------------------------------------------
-export function computeDriverScoringStats(dr: DriverResultData, fastestLap: string) {
+export function computeDriverScoringStats(dr: DriverResultData, fastestLap: string, lastFinishPos: number = 0) {
   const scoringQualiPts = dr.qualifyingPos !== null
     ? getQualiPoints(dr.qualifyingPos)
     : null;
 
   const scoringRacePts = (dr.racePos !== null || dr.isDnf)
-    ? getRacePtsForDriver(dr, fastestLap)
+    ? getRacePtsForDriver(dr, fastestLap, lastFinishPos)
     : null;
 
   const scoringSprintQualiPts = dr.sprintQualiPos !== null
@@ -533,7 +554,7 @@ export function computeDriverScoringStats(dr: DriverResultData, fastestLap: stri
     : null;
 
   const scoringPosGainPts = (!dr.isDnf && dr.qualifyingPos !== null && dr.racePos !== null)
-    ? Math.max(0, dr.qualifyingPos - dr.racePos)
+    ? Math.min(Math.max(0, dr.qualifyingPos - dr.racePos), 10)
     : null;
 
   const scoringPosLost = (!dr.isDnf && dr.qualifyingPos !== null && dr.racePos !== null)
