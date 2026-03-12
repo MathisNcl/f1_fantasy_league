@@ -30,7 +30,89 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Course introuvable" }, { status: 404 });
   }
 
-  // Créer ou mettre à jour le RaceResult
+  const allDriverCodes = DRIVERS.map((d) => d.code);
+
+  // ---------------------------------------------------------------------------
+  // Charger les anciens résultats AVANT de les écraser (pour inverser les énergies)
+  // ---------------------------------------------------------------------------
+  const existingRaceResult = await prisma.raceResult.findUnique({
+    where: { raceId: Number(raceId) },
+    include: {
+      driverResults: { select: { driverCode: true, isDnf: true, racePos: true } },
+    },
+  });
+  const oldDriverResults = existingRaceResult?.driverResults ?? [];
+
+  // ---------------------------------------------------------------------------
+  // Charger les picks et les énergies actuelles
+  // ---------------------------------------------------------------------------
+  const picks = await prisma.pick.findMany({
+    where: { raceId: Number(raceId) },
+  });
+
+  const energyRecords = await prisma.driverEnergy.findMany({
+    where: {
+      userId: { in: picks.map((p) => p.userId) },
+      season: race.season,
+    },
+  });
+
+  // Map : userId → driverCode → energy
+  const energyByUser: Record<string, Record<string, number>> = {};
+  for (const rec of energyRecords) {
+    if (!energyByUser[rec.userId]) energyByUser[rec.userId] = {};
+    energyByUser[rec.userId][rec.driverCode] = rec.energy;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Si re-soumission : inverser les changements d'énergie de l'ancienne course
+  // pour retrouver l'état pré-course avant d'appliquer les nouveaux
+  // ---------------------------------------------------------------------------
+  if (existingRaceResult && oldDriverResults.length > 0) {
+    for (const pick of picks) {
+      if (!energyByUser[pick.userId]) energyByUser[pick.userId] = {};
+      const userEnergy = energyByUser[pick.userId];
+
+      // Ancien perdant (anciens résultats)
+      const oldDr1 = oldDriverResults.find((r) => r.driverCode === pick.driver1);
+      const oldDr2 = oldDriverResults.find((r) => r.driverCode === pick.driver2);
+      const oldPos1 =
+        !oldDr1 || oldDr1.isDnf || oldDr1.racePos === null ? Infinity : oldDr1.racePos;
+      const oldPos2 =
+        !oldDr2 || oldDr2.isDnf || oldDr2.racePos === null ? Infinity : oldDr2.racePos;
+      const oldLoserCode =
+        oldPos1 === oldPos2 ? null : oldPos1 > oldPos2 ? pick.driver1 : pick.driver2;
+
+      const teamDriverCodes = new Set(
+        DRIVERS.filter((d) => d.team === pick.team).map((d) => d.code)
+      );
+
+      for (const code of allDriverCodes) {
+        let energy = userEnergy[code] ?? 1.0;
+
+        const wasSelected = code === pick.driver1 || code === pick.driver2;
+        const wasTeamDriver = teamDriverCodes.has(code);
+
+        // Inverser dans l'ordre inverse de l'application originale :
+        // 5. Inverse team : -0.05 → +0.05
+        if (wasTeamDriver) energy += 0.05;
+        // 4. Inverse non-sélectionné non-team : +0.05 → -0.05
+        if (!wasSelected && !wasTeamDriver) energy -= 0.05;
+        // 3. Inverse perdant : -0.05 → +0.05
+        if (wasSelected && pick.strategy !== "moteur" && code === oldLoserCode) energy += 0.05;
+        // 2. Inverse sélectionné : -0.20 → +0.20
+        if (wasSelected && pick.strategy !== "moteur") energy += 0.2;
+        // 1. Inverse huile_moteur : +0.10 → -0.10
+        if (pick.strategy === "huile_moteur" && pick.huileMoteurTarget === code) energy -= 0.1;
+
+        energyByUser[pick.userId][code] = Math.max(0, Math.min(1.0, energy));
+      }
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Créer ou mettre à jour le RaceResult + DriverResults
+  // ---------------------------------------------------------------------------
   const raceResult = await prisma.raceResult.upsert({
     where: { raceId: Number(raceId) },
     update: { fastestLap, hasRedFlag, hasSprintRedFlag: hasSprintRedFlag ?? false },
@@ -43,7 +125,6 @@ export async function POST(request: Request) {
     .map((r) => r.racePos as number);
   const lastFinishPos = finisherPositions.length > 0 ? Math.max(...finisherPositions) : 0;
 
-  // Mettre à jour les DriverResult (upsert par driverCode)
   for (const dr of driverResults) {
     const scoring = computeDriverScoringStats(dr, fastestLap, lastFinishPos);
     const baseFields = {
@@ -62,27 +143,9 @@ export async function POST(request: Request) {
     });
   }
 
-  // Récupérer tous les picks pour cette course
-  const picks = await prisma.pick.findMany({
-    where: { raceId: Number(raceId) },
-  });
-
-  // Charger les énergies actuelles pour tous les joueurs de cette course
-  const energyRecords = await prisma.driverEnergy.findMany({
-    where: {
-      userId: { in: picks.map((p) => p.userId) },
-      season: race.season,
-    },
-  });
-
-  // Map : userId → driverCode → energy
-  const energyByUser: Record<string, Record<string, number>> = {};
-  for (const rec of energyRecords) {
-    if (!energyByUser[rec.userId]) energyByUser[rec.userId] = {};
-    energyByUser[rec.userId][rec.driverCode] = rec.energy;
-  }
-
-  // Construire les PickData avec les énergies effectives
+  // ---------------------------------------------------------------------------
+  // Construire les PickData avec les énergies pré-course (après inversion éventuelle)
+  // ---------------------------------------------------------------------------
   const picksData = picks.map((p) => {
     const userEnergy = energyByUser[p.userId] ?? {};
     let d1Energy = userEnergy[p.driver1] ?? 1.0;
@@ -125,10 +188,8 @@ export async function POST(request: Request) {
   await Promise.all(scorePromises);
 
   // ---------------------------------------------------------------------------
-  // Mettre à jour les énergies après la course
+  // Mettre à jour les énergies après la course (depuis l'état pré-course)
   // ---------------------------------------------------------------------------
-  const allDriverCodes = DRIVERS.map((d) => d.code);
-
   for (const pick of picks) {
     const userEnergy = energyByUser[pick.userId] ?? {};
 
@@ -143,26 +204,19 @@ export async function POST(request: Request) {
       !dr2Result || dr2Result.isDnf || dr2Result.racePos === null
         ? Infinity
         : dr2Result.racePos;
-    // Si les deux sont Infinity (tous deux DNF), pas de perdant
     const loserCode =
-      pos1 === pos2
-        ? null
-        : pos1 > pos2
-        ? pick.driver1
-        : pick.driver2;
+      pos1 === pos2 ? null : pos1 > pos2 ? pick.driver1 : pick.driver2;
 
-    // Pilotes de l'écurie choisie
     const teamDriverCodes = new Set(
       DRIVERS.filter((d) => d.team === pick.team).map((d) => d.code)
     );
 
-    // Calculer les nouvelles énergies pour tous les pilotes
     const energyUpdates: Array<{ driverCode: string; energy: number }> = [];
 
     for (const code of allDriverCodes) {
       let energy = userEnergy[code] ?? 1.0;
 
-      // Appliquer le boost Huile moteur sur l'énergie stockée avant les changements post-course
+      // Appliquer le boost Huile moteur sur l'énergie stockée
       if (pick.strategy === "huile_moteur" && pick.huileMoteurTarget === code) {
         energy = Math.min(1.0, energy + 0.1);
       }
@@ -171,17 +225,14 @@ export async function POST(request: Request) {
       const isTeamDriver = teamDriverCodes.has(code);
 
       if (isSelected) {
-        // Pas de fatigue avec "moteur"
         if (pick.strategy !== "moteur") {
           energy -= 0.2; // -20% sélectionné
           if (code === loserCode) energy -= 0.05; // -5% perdant
         }
       } else if (!isTeamDriver) {
-        // Non sélectionné et pas pilote de l'écurie : +5% de récupération
         energy = Math.min(1.0, energy + 0.05);
       }
 
-      // Pilote de l'écurie choisie : -5% (applicable à tous, sélectionnés ou non)
       if (isTeamDriver) {
         energy -= 0.05;
       }
