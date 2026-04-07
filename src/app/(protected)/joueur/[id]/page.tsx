@@ -32,9 +32,16 @@ export default async function UserProfilePage({
 
   const session = await auth();
   const currentUserId = session!.user!.id!;
+  const isOwnProfile = currentUserId === id;
 
   const seasonPicks = picks.filter((p) => p.race.season === currentYear);
-  const remainingTokens = getRemainingTokens(seasonPicks, currentYear);
+
+  // Pour les profils tiers, on ne compte que les picks dont la deadline est passée
+  // pour éviter de révéler la stratégie de la course en cours.
+  const picksForTokens = isOwnProfile
+    ? seasonPicks
+    : seasonPicks.filter((p) => now >= (p.race.deadline ?? p.race.date));
+  const remainingTokens = getRemainingTokens(picksForTokens, currentYear);
   const totalPoints = scores.reduce((sum, s) => sum + s.points, 0);
 
   // Energy map (default 100%)
@@ -73,8 +80,6 @@ export default async function UserProfilePage({
         breakdown: score?.breakdown ?? null,
       };
     });
-
-  const isOwnProfile = currentUserId === id;
 
   return (
     <div className="space-y-8">
