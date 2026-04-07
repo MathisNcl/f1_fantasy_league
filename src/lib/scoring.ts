@@ -176,7 +176,7 @@ function calcRacePtsUltraTendre(
     else if (gain < 0) pts -= 2;
   }
 
-  if (dr.driverCode === fastestLap) pts += 5;
+  if (dr.driverCode === fastestLap) pts += 2;
 
   if (lastFinishPos > 0) pts += getTailPenalty(dr.racePos, lastFinishPos);
 

@@ -60,7 +60,7 @@ export const STRATEGIES = [
     code: "medium",
     label: "Medium",
     description: "Aucun effet — option sécurisée",
-    tokens: 7,
+    tokens: 5,
     color: "gray" as const,
   },
   {

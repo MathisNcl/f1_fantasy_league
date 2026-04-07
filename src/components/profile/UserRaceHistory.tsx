@@ -144,7 +144,7 @@ export default function UserRaceHistory({ races }: { races: RaceHistoryEntry[] }
                             {d.hasFastestLap && (
                               <div className="flex justify-between text-purple-400 pl-2">
                                 <span>↳ Meilleur tour</span>
-                                <span>+5</span>
+                                <span>+2</span>
                               </div>
                             )}
                             {d.posGain > 0 && (

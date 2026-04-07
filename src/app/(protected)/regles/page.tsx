@@ -92,7 +92,7 @@ export default function ReglesPage() {
           <Row label="Places remontées vs grille" value="+1 pt / place" sub="Maximum +10 pts" />
           <Row label="Positions perdues vs grille" value="-2 pts (fixe)" />
           <Row label="Abandon (DNF)" value="-5 pts" />
-          <Row label="Meilleur tour en course" value="+5 pts" />
+          <Row label="Meilleur tour en course" value="+2 pts" />
           <Row label="Dernier finisher (hors DNF)" value="-3 pts" />
           <Row label="Avant-dernier finisher (hors DNF)" value="-2 pts" />
           <Row label="3e depuis la fin (hors DNF)" value="-1 pt" />

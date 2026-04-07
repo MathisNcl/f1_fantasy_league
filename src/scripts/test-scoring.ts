@@ -273,7 +273,7 @@ console.log("\n── Test 12 : Undercut ──");
   };
   // B : LEC(Q3,R3) + HAM(Q4,R4) / Ferrari / medium — score de référence plus bas
   // A : VER(Q1,R1) + NOR(Q2,R2) / McLaren / undercut — score plus haut → A devant B
-  // VER : FL(+5), quali=12, course=P1=25+0=25 → 42
+  // VER : FL(+2), quali=12, course=P1=25+0=25 → 39
   // NOR : quali=10(P2), course=P2=18+0=18 → 28 (qualPos=2, racePos=2, gain=0)
   // McLaren: NOR P2=18, PIA P5=10 → 14
   // bonus: VER(P1) devant NOR(P2) → +5 ; P1+P2 → +20 = 25

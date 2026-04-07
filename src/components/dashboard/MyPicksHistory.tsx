@@ -78,7 +78,7 @@ function BreakdownPanel({ bd, hasSprint, pick }: {
           {hasFl && (
             <div className="flex justify-between pl-2">
               <span className="text-purple-400">↳ Meilleur tour</span>
-              <span className="text-purple-400">+5 pts</span>
+              <span className="text-purple-400">+2 pts</span>
             </div>
           )}
           {posGain > 0 && (
