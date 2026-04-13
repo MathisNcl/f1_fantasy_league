@@ -6,12 +6,13 @@ import Image from "next/image";
 
 type Props = {
   userName: string;
+  userId: string;
   isAdmin: boolean;
   isContributor: boolean;
   signOutForm: React.ReactNode;
 };
 
-export default function Navbar({ userName, isAdmin, isContributor, signOutForm }: Props) {
+export default function Navbar({ userName, userId, isAdmin, isContributor, signOutForm }: Props) {
   const [open, setOpen] = useState(false);
 
   const linkClass =
@@ -42,7 +43,7 @@ export default function Navbar({ userName, isAdmin, isContributor, signOutForm }
               Admin
             </Link>
           )}
-          <span className="text-gray-400 text-sm">{userName}</span>
+          <Link href={`/joueur/${userId}`} className="text-gray-400 hover:text-white transition-colors text-sm">{userName}</Link>
           {signOutForm}
         </nav>
 
@@ -82,7 +83,7 @@ export default function Navbar({ userName, isAdmin, isContributor, signOutForm }
             </Link>
           )}
           <div className="border-t border-gray-800 pt-3 flex items-center justify-between">
-            <span className="text-gray-400 text-sm">{userName}</span>
+            <Link href={`/joueur/${userId}`} className="text-gray-400 hover:text-white transition-colors text-sm font-medium py-1">{userName}</Link>
             {signOutForm}
           </div>
         </nav>

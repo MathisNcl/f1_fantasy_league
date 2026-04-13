@@ -6,6 +6,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import UserRaceHistory from "@/components/profile/UserRaceHistory";
 import type { RaceHistoryEntry } from "@/components/profile/UserRaceHistory";
+import PlayerSwitcher from "@/components/profile/PlayerSwitcher";
 
 export default async function UserProfilePage({
   params,
@@ -16,7 +17,7 @@ export default async function UserProfilePage({
   const now = new Date();
   const currentYear = now.getFullYear();
 
-  const [targetUser, picks, scores, energyRecords, allUsers] = await Promise.all([
+  const [targetUser, picks, scores, energyRecords, allUsers, allScores] = await Promise.all([
     prisma.user.findUnique({ where: { id }, select: { id: true, name: true } }),
     prisma.pick.findMany({
       where: { userId: id },
@@ -26,6 +27,7 @@ export default async function UserProfilePage({
     prisma.score.findMany({ where: { userId: id } }),
     prisma.driverEnergy.findMany({ where: { userId: id, season: currentYear } }),
     prisma.user.findMany({ select: { id: true, name: true } }),
+    prisma.score.findMany({ select: { userId: true, points: true } }),
   ]);
 
   if (!targetUser) notFound();
@@ -60,6 +62,15 @@ export default async function UserProfilePage({
   const scoresByRaceId = new Map(scores.map((s) => [s.raceId, s]));
   const userNameById = new Map(allUsers.map((u) => [u.id, u.name]));
 
+  // Liste des joueurs triée par points décroissants pour le dropdown
+  const pointsByUser: Record<string, number> = {};
+  for (const s of allScores) {
+    pointsByUser[s.userId] = (pointsByUser[s.userId] ?? 0) + s.points;
+  }
+  const sortedPlayers = allUsers
+    .map((u) => ({ id: u.id, name: u.name ?? "", totalPoints: pointsByUser[u.id] ?? 0 }))
+    .sort((a, b) => b.totalPoints - a.totalPoints);
+
   // Race history: only show picks where deadline has passed
   const raceHistory: RaceHistoryEntry[] = picks
     .filter((p) => now >= (p.race.deadline ?? p.race.date))
@@ -84,10 +95,11 @@ export default async function UserProfilePage({
   return (
     <div className="space-y-8">
       {/* Header */}
-      <div>
+      <div className="flex items-center justify-between">
         <Link href="/dashboard" className="text-gray-400 hover:text-white text-sm transition-colors">
           ← Dashboard
         </Link>
+        <PlayerSwitcher players={sortedPlayers} currentId={id} />
       </div>
 
       <div className="flex items-start justify-between">

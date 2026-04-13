@@ -11,7 +11,7 @@ export default async function ProtectedLayout({
   const session = await auth();
   if (!session) redirect("/login");
 
-  const user = session.user as { role?: string; name?: string; email?: string };
+  const user = session.user as { id?: string; role?: string; name?: string; email?: string };
 
   const signOutForm = (
     <form
@@ -33,6 +33,7 @@ export default async function ProtectedLayout({
     <div className="min-h-screen bg-gray-950 text-white">
       <Navbar
         userName={user?.name ?? ""}
+        userId={user?.id ?? ""}
         isAdmin={user?.role === "ADMIN"}
         isContributor={user?.role === "CONTRIBUTOR"}
         signOutForm={signOutForm}
