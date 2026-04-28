@@ -33,7 +33,16 @@ export default async function LoginPage({ searchParams }: Props) {
 
           <LoginForm />
 
-          <p className="text-center text-gray-500 text-sm mt-6">
+          <p className="text-center text-gray-500 text-sm mt-4">
+            <Link
+              href="/forgot-password"
+              className="text-gray-400 hover:text-white transition-colors"
+            >
+              Mot de passe oublié ?
+            </Link>
+          </p>
+
+          <p className="text-center text-gray-500 text-sm mt-3">
             Pas encore de compte ?{" "}
             <Link
               href="/register"
