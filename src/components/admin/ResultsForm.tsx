@@ -95,9 +95,6 @@ export default function ResultsForm({ races }: Props) {
   const [csvMessage, setCsvMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [importLoading, setImportLoading] = useState(false);
   const [importMessage, setImportMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
-  const [copySourceId, setCopySourceId] = useState("");
-  const [copyLoading, setCopyLoading] = useState(false);
-  const [copyMessage, setCopyMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   async function handleJolpicaImport() {
     if (!selectedRace) return;
@@ -128,41 +125,27 @@ export default function ResultsForm({ races }: Props) {
     }
   }
 
-  async function handleCopyFromRace() {
-    if (!copySourceId) return;
-    setCopyLoading(true);
-    setCopyMessage(null);
-    try {
-      const res = await fetch(`/api/admin/race-results?raceId=${copySourceId}`);
-      const data = await res.json();
-      if (!res.ok) {
-        setCopyMessage({ type: "error", text: data.error ?? "Erreur lors de la récupération." });
-        return;
-      }
-      const newRows = initRows().map((row) => {
-        const dr = data.driverResults.find((d: { driverCode: string }) => d.driverCode === row.driverCode);
-        if (!dr) return row;
-        return {
-          ...row,
-          qualifyingPos: dr.qualifyingPos != null ? String(dr.qualifyingPos) : "",
-          racePos: dr.racePos != null ? String(dr.racePos) : "",
-          isDnf: dr.isDnf,
-          sprintQualiPos: dr.sprintQualiPos != null ? String(dr.sprintQualiPos) : "",
-          sprintRacePos: dr.sprintRacePos != null ? String(dr.sprintRacePos) : "",
-          sprintIsDnf: dr.sprintIsDnf,
-        };
-      });
-      setRows(newRows);
-      setFastestLap(data.fastestLap ?? "");
-      setHasRedFlag(data.hasRedFlag ?? false);
-      setHasSprintRedFlag(data.hasSprintRedFlag ?? false);
-      const sourceName = pastRaces.find((r) => r.id === Number(copySourceId))?.name ?? "";
-      setCopyMessage({ type: "success", text: `Résultats copiés depuis ${sourceName}.` });
-    } catch {
-      setCopyMessage({ type: "error", text: "Impossible de récupérer les résultats." });
-    } finally {
-      setCopyLoading(false);
-    }
+  async function loadExistingResults(id: number) {
+    const res = await fetch(`/api/admin/race-results?raceId=${id}`);
+    if (!res.ok) return;
+    const data = await res.json();
+    const newRows = initRows().map((row) => {
+      const dr = data.driverResults.find((d: { driverCode: string }) => d.driverCode === row.driverCode);
+      if (!dr) return row;
+      return {
+        ...row,
+        qualifyingPos: dr.qualifyingPos != null ? String(dr.qualifyingPos) : "",
+        racePos: dr.racePos != null ? String(dr.racePos) : "",
+        isDnf: dr.isDnf,
+        sprintQualiPos: dr.sprintQualiPos != null ? String(dr.sprintQualiPos) : "",
+        sprintRacePos: dr.sprintRacePos != null ? String(dr.sprintRacePos) : "",
+        sprintIsDnf: dr.sprintIsDnf,
+      };
+    });
+    setRows(newRows);
+    setFastestLap(data.fastestLap ?? "");
+    setHasRedFlag(data.hasRedFlag ?? false);
+    setHasSprintRedFlag(data.hasSprintRedFlag ?? false);
   }
 
   function handleCsvImport(e: React.ChangeEvent<HTMLInputElement>) {
@@ -258,9 +241,12 @@ export default function ResultsForm({ races }: Props) {
             <select
               value={raceId}
               onChange={(e) => {
-                setRaceId(e.target.value);
+                const newId = e.target.value;
+                setRaceId(newId);
                 setRows(initRows());
                 setActiveTab("sprint");
+                const race = pastRaces.find((r) => r.id === Number(newId));
+                if (race?.result) loadExistingResults(Number(newId));
               }}
               required
               className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2.5 text-white focus:outline-none focus:border-yellow-500 text-sm"
@@ -277,40 +263,6 @@ export default function ResultsForm({ races }: Props) {
           {/* Import */}
           {raceId && (
             <div className="space-y-3">
-              {/* Copier depuis une course déjà saisie */}
-              {pastRaces.some((r) => r.result && r.id !== Number(raceId)) && (
-                <div className="space-y-1.5">
-                  <p className="text-xs text-gray-400">Copier depuis un GP déjà saisi</p>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <select
-                      value={copySourceId}
-                      onChange={(e) => setCopySourceId(e.target.value)}
-                      className="flex-1 min-w-0 bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-yellow-500"
-                    >
-                      <option value="">Choisir un GP source...</option>
-                      {pastRaces
-                        .filter((r) => r.result && r.id !== Number(raceId))
-                        .map((r) => (
-                          <option key={r.id} value={r.id}>{r.name}</option>
-                        ))}
-                    </select>
-                    <button
-                      type="button"
-                      onClick={handleCopyFromRace}
-                      disabled={!copySourceId || copyLoading}
-                      className="flex items-center gap-2 px-3 py-2 bg-blue-900/60 hover:bg-blue-800/60 border border-blue-700/50 rounded-lg text-sm text-blue-200 transition-colors disabled:opacity-50"
-                    >
-                      {copyLoading ? "Copie..." : "⬇ Copier"}
-                    </button>
-                  </div>
-                  {copyMessage && (
-                    <p className={`text-xs ${copyMessage.type === "success" ? "text-green-400" : "text-red-400"}`}>
-                      {copyMessage.text}
-                    </p>
-                  )}
-                </div>
-              )}
-
               {/* Jolpica + CSV */}
               <div className="flex items-center gap-3 flex-wrap">
                 <button
