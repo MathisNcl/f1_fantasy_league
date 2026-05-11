@@ -64,6 +64,9 @@ export async function POST(request: Request) {
     energyByUser[rec.userId][rec.driverCode] = rec.energy;
   }
 
+  // Si quelqu'un joue FIA, la protection "moteur" (pas de fatigue) est annulée
+  const hasAnyFIA = picks.some((p) => p.strategy === "fia");
+
   // ---------------------------------------------------------------------------
   // Si re-soumission : inverser les changements d'énergie de l'ancienne course
   // pour retrouver l'état pré-course avant d'appliquer les nouveaux
@@ -99,9 +102,9 @@ export async function POST(request: Request) {
         // 4. Inverse non-sélectionné non-team : +0.05 → -0.05
         if (!wasSelected && !wasTeamDriver) energy -= 0.05;
         // 3. Inverse perdant : -0.05 → +0.05
-        if (wasSelected && pick.strategy !== "moteur" && code === oldLoserCode) energy += 0.05;
+        if (wasSelected && (pick.strategy !== "moteur" || hasAnyFIA) && code === oldLoserCode) energy += 0.05;
         // 2. Inverse sélectionné : -0.20 → +0.20
-        if (wasSelected && pick.strategy !== "moteur") energy += 0.2;
+        if (wasSelected && (pick.strategy !== "moteur" || hasAnyFIA)) energy += 0.2;
         // 1. Inverse huile_moteur : +0.10 → -0.10
         if (pick.strategy === "huile_moteur" && pick.huileMoteurTarget === code) energy -= 0.1;
 
@@ -225,7 +228,7 @@ export async function POST(request: Request) {
       const isTeamDriver = teamDriverCodes.has(code);
 
       if (isSelected) {
-        if (pick.strategy !== "moteur") {
+        if (pick.strategy !== "moteur" || hasAnyFIA) {
           energy -= 0.2; // -20% sélectionné
           if (code === loserCode) energy -= 0.05; // -5% perdant
         }
