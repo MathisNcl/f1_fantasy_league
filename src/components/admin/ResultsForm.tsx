@@ -95,6 +95,8 @@ export default function ResultsForm({ races }: Props) {
   const [csvMessage, setCsvMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [importLoading, setImportLoading] = useState(false);
   const [importMessage, setImportMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [sortCourse, setSortCourse] = useState<"default" | "quali" | "race">("default");
+  const [sortSprint, setSortSprint] = useState<"default" | "sprintQuali" | "sprintRace">("default");
 
   async function handleJolpicaImport() {
     if (!selectedRace) return;
@@ -222,6 +224,42 @@ export default function ResultsForm({ races }: Props) {
 
   const inputClass =
     "w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-yellow-500 text-center";
+
+  function sortRows(base: DriverRow[], key: "quali" | "race" | "sprintQuali" | "sprintRace" | "default"): DriverRow[] {
+    if (key === "default") return base;
+    return [...base].sort((a, b) => {
+      const va = key === "quali" ? Number(a.qualifyingPos) || 99
+               : key === "race" ? (a.isDnf ? 99 : Number(a.racePos) || 99)
+               : key === "sprintQuali" ? Number(a.sprintQualiPos) || 99
+               : (a.sprintIsDnf ? 99 : Number(a.sprintRacePos) || 99);
+      const vb = key === "quali" ? Number(b.qualifyingPos) || 99
+               : key === "race" ? (b.isDnf ? 99 : Number(b.racePos) || 99)
+               : key === "sprintQuali" ? Number(b.sprintQualiPos) || 99
+               : (b.sprintIsDnf ? 99 : Number(b.sprintRacePos) || 99);
+      return va - vb;
+    });
+  }
+
+  const thSort = (label: string, key: typeof sortCourse, active: typeof sortCourse, set: (v: typeof sortCourse) => void) => (
+    <th
+      className="px-2 py-2 font-medium w-16 cursor-pointer select-none hover:text-white transition-colors"
+      onClick={() => set(active === key ? "default" : key)}
+    >
+      {label}{active === key ? " ▲" : ""}
+    </th>
+  );
+
+  const thSortSprint = (label: string, key: typeof sortSprint, active: typeof sortSprint, set: (v: typeof sortSprint) => void) => (
+    <th
+      className="px-2 py-2 font-medium w-16 cursor-pointer select-none hover:text-white transition-colors"
+      onClick={() => set(active === key ? "default" : key)}
+    >
+      {label}{active === key ? " ▲" : ""}
+    </th>
+  );
+
+  const displayRowsCourse = sortRows(rows, sortCourse);
+  const displayRowsSprint = sortRows(rows, sortSprint);
 
   return (
     <div className="bg-gray-900 rounded-xl border border-gray-800 p-6">
@@ -357,13 +395,13 @@ export default function ResultsForm({ races }: Props) {
                         <thead>
                           <tr className="bg-purple-950/60 text-gray-400">
                             <th className="text-left px-3 py-2 font-medium">Pilote</th>
-                            <th className="px-2 py-2 font-medium w-16">SQ</th>
-                            <th className="px-2 py-2 font-medium w-16">Arrivée</th>
+                            {thSortSprint("SQ", "sprintQuali", sortSprint, setSortSprint)}
+                            {thSortSprint("Arrivée", "sprintRace", sortSprint, setSortSprint)}
                             <th className="px-2 py-2 font-medium w-12">DNF</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-800">
-                          {rows.map((row) => {
+                          {displayRowsSprint.map((row) => {
                             const driver = DRIVERS.find((d) => d.code === row.driverCode)!;
                             return (
                               <tr
@@ -474,13 +512,13 @@ export default function ResultsForm({ races }: Props) {
                         <thead>
                           <tr className="bg-gray-800 text-gray-400">
                             <th className="text-left px-3 py-2 font-medium">Pilote</th>
-                            <th className="px-2 py-2 font-medium w-16">Quali</th>
-                            <th className="px-2 py-2 font-medium w-16">Arrivée</th>
+                            {thSort("Quali", "quali", sortCourse, setSortCourse)}
+                            {thSort("Arrivée", "race", sortCourse, setSortCourse)}
                             <th className="px-2 py-2 font-medium w-12">DNF</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-800">
-                          {rows.map((row) => {
+                          {displayRowsCourse.map((row) => {
                             const driver = DRIVERS.find((d) => d.code === row.driverCode)!;
                             return (
                               <tr
