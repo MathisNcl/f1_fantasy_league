@@ -4,7 +4,7 @@ import Leaderboard from "@/components/dashboard/Leaderboard";
 import PicksForm from "@/components/dashboard/PicksForm";
 import RaceRecapSelector from "@/components/dashboard/RaceRecapSelector";
 import NextRacePicksStatus from "@/components/dashboard/NextRacePicksStatus";
-import PointsChart, { getPlayerColors } from "@/components/dashboard/PointsChart";
+import PointsChart from "@/components/dashboard/PointsChart";
 import { getRemainingTokens } from "@/lib/scoring";
 import { DRIVERS } from "@/lib/constants";
 
@@ -146,6 +146,11 @@ async function getLastRaceRecap(currentYear: number) {
   };
 }
 
+const CHART_COLORS = [
+  "#ef4444", "#3b82f6", "#22c55e", "#f59e0b", "#a855f7",
+  "#06b6d4", "#f97316", "#84cc16", "#ec4899", "#14b8a6",
+];
+
 async function getChartData(currentYear: number) {
   const [races, scores, users] = await Promise.all([
     prisma.race.findMany({
@@ -157,7 +162,8 @@ async function getChartData(currentYear: number) {
     prisma.user.findMany({ select: { id: true, name: true } }),
   ]);
 
-  const colorMap = getPlayerColors(users.map((u) => u.id));
+  const colorMap: Record<string, string> = {};
+  users.forEach((u, i) => { colorMap[u.id] = CHART_COLORS[i % CHART_COLORS.length]; });
 
   // Cumul par joueur au fil des GPs
   const cumul: Record<string, number> = {};

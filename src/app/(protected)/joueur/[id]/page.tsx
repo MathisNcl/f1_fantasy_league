@@ -4,8 +4,6 @@ import { getRemainingTokens } from "@/lib/scoring";
 import { DRIVERS, STRATEGIES } from "@/lib/constants";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import UserRaceHistory from "@/components/profile/UserRaceHistory";
-import type { RaceHistoryEntry } from "@/components/profile/UserRaceHistory";
 import PlayerSwitcher from "@/components/profile/PlayerSwitcher";
 import MyPicksHistory from "@/components/dashboard/MyPicksHistory";
 
@@ -60,9 +58,6 @@ export default async function UserProfilePage({
     energy: energyMap[d.code],
   })).sort((a, b) => a.energy - b.energy || a.code.localeCompare(b.code));
 
-  const scoresByRaceId = new Map(scores.map((s) => [s.raceId, s]));
-  const userNameById = new Map(allUsers.map((u) => [u.id, u.name]));
-
   // Liste des joueurs triée par points décroissants pour le dropdown
   const pointsByUser: Record<string, number> = {};
   for (const s of allScores) {
@@ -77,27 +72,6 @@ export default async function UserProfilePage({
     ...p,
     score: scores.find((s) => s.raceId === p.raceId) ?? null,
   }));
-
-  // Race history: only show picks where deadline has passed
-  const raceHistory: RaceHistoryEntry[] = picks
-    .filter((p) => now >= (p.race.deadline ?? p.race.date))
-    .map((p) => {
-      const score = scoresByRaceId.get(p.raceId);
-      return {
-        raceId: p.raceId,
-        raceName: p.race.name,
-        raceDate: p.race.date.toISOString(),
-        driver1: p.driver1,
-        driver2: p.driver2,
-        team: p.team,
-        strategy: p.strategy,
-        drsTarget: p.drsTarget,
-        drsTargetName: p.drsTarget ? (userNameById.get(p.drsTarget) ?? null) : null,
-        huileMoteurTarget: p.huileMoteurTarget,
-        score: score?.points ?? null,
-        breakdown: score?.breakdown ?? null,
-      };
-    });
 
   return (
     <div className="space-y-8">
@@ -177,10 +151,7 @@ export default async function UserProfilePage({
         </div>
       </div>
 
-      {/* Historique des courses */}
-      <UserRaceHistory races={raceHistory} />
-
-      {/* Historique des picks détaillé */}
+      {/* Historique des picks */}
       <MyPicksHistory picks={picksWithScore} />
     </div>
   );
