@@ -109,7 +109,7 @@ export default function LastRaceRecap({ race, entries, currentUserId }: Props) {
       {/* En-tête */}
       <div className="flex items-start justify-between mb-4">
         <div>
-          <h2 className="text-xl font-semibold text-white">Dernier week-end</h2>
+          <h2 className="text-xl font-semibold text-white">Classement week-end</h2>
           <p className="text-red-400 font-medium text-sm mt-0.5">{race.name}</p>
         </div>
         <div className="text-right">

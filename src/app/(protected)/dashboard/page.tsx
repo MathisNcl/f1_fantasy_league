@@ -2,9 +2,9 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import Leaderboard from "@/components/dashboard/Leaderboard";
 import PicksForm from "@/components/dashboard/PicksForm";
-import MyPicksHistory from "@/components/dashboard/MyPicksHistory";
 import RaceRecapSelector from "@/components/dashboard/RaceRecapSelector";
 import NextRacePicksStatus from "@/components/dashboard/NextRacePicksStatus";
+import PointsChart, { getPlayerColors } from "@/components/dashboard/PointsChart";
 import { getRemainingTokens } from "@/lib/scoring";
 import { DRIVERS } from "@/lib/constants";
 
@@ -146,6 +146,36 @@ async function getLastRaceRecap(currentYear: number) {
   };
 }
 
+async function getChartData(currentYear: number) {
+  const [races, scores, users] = await Promise.all([
+    prisma.race.findMany({
+      where: { season: currentYear, result: { isNot: null } },
+      orderBy: { date: "asc" },
+      select: { id: true, name: true },
+    }),
+    prisma.score.findMany({ where: { race: { season: currentYear } } }),
+    prisma.user.findMany({ select: { id: true, name: true } }),
+  ]);
+
+  const colorMap = getPlayerColors(users.map((u) => u.id));
+
+  // Cumul par joueur au fil des GPs
+  const cumul: Record<string, number> = {};
+  const data = races.map((race) => {
+    const point: Record<string, string | number> = { raceName: race.name };
+    for (const user of users) {
+      const s = scores.find((sc) => sc.raceId === race.id && sc.userId === user.id);
+      cumul[user.id] = (cumul[user.id] ?? 0) + (s?.points ?? 0);
+      point[user.id] = cumul[user.id];
+    }
+    return point;
+  });
+
+  const players = users.map((u) => ({ userId: u.id, name: u.name ?? "?", color: colorMap[u.id] }));
+
+  return { players, data };
+}
+
 export default async function DashboardPage() {
   const session = await auth();
   const userId = session!.user!.id!;
@@ -169,10 +199,11 @@ export default async function DashboardPage() {
   // - sinon nextPickRace si on est en semaine de course (picks cachés avant deadline)
   const raceForStatus = activeRace ?? nextPickRace;
 
-  const [existingPick, lastRaceRecap, picksStatus] = await Promise.all([
+  const [existingPick, lastRaceRecap, picksStatus, chartData] = await Promise.all([
     nextPickRace ? getMyPickForRace(userId, nextPickRace.id) : Promise.resolve(null),
     getLastRaceRecap(currentYear),
     raceForStatus ? getRacePicksStatus(raceForStatus.id) : Promise.resolve([]),
+    getChartData(currentYear),
   ]);
 
   // Picks de la saison courante, hors pick de la prochaine course à picker
@@ -265,8 +296,8 @@ export default async function DashboardPage() {
         />
       )}
 
-      {/* Historique des picks */}
-      <MyPicksHistory picks={myPicks} />
+      {/* Évolution des points */}
+      <PointsChart players={chartData.players} data={chartData.data} />
     </div>
   );
 }

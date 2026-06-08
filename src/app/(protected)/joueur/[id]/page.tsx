@@ -7,6 +7,7 @@ import { notFound } from "next/navigation";
 import UserRaceHistory from "@/components/profile/UserRaceHistory";
 import type { RaceHistoryEntry } from "@/components/profile/UserRaceHistory";
 import PlayerSwitcher from "@/components/profile/PlayerSwitcher";
+import MyPicksHistory from "@/components/dashboard/MyPicksHistory";
 
 export default async function UserProfilePage({
   params,
@@ -70,6 +71,12 @@ export default async function UserProfilePage({
   const sortedPlayers = allUsers
     .map((u) => ({ id: u.id, name: u.name ?? "", totalPoints: pointsByUser[u.id] ?? 0 }))
     .sort((a, b) => b.totalPoints - a.totalPoints);
+
+  // Picks with score attached (for MyPicksHistory)
+  const picksWithScore = picks.map((p) => ({
+    ...p,
+    score: scores.find((s) => s.raceId === p.raceId) ?? null,
+  }));
 
   // Race history: only show picks where deadline has passed
   const raceHistory: RaceHistoryEntry[] = picks
@@ -172,6 +179,9 @@ export default async function UserProfilePage({
 
       {/* Historique des courses */}
       <UserRaceHistory races={raceHistory} />
+
+      {/* Historique des picks détaillé */}
+      <MyPicksHistory picks={picksWithScore} />
     </div>
   );
 }
