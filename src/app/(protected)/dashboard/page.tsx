@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import Leaderboard from "@/components/dashboard/Leaderboard";
 import PicksForm from "@/components/dashboard/PicksForm";
 import MyPicksHistory from "@/components/dashboard/MyPicksHistory";
-import LastRaceRecap from "@/components/dashboard/LastRaceRecap";
+import RaceRecapSelector from "@/components/dashboard/RaceRecapSelector";
 import NextRacePicksStatus from "@/components/dashboard/NextRacePicksStatus";
 import { getRemainingTokens } from "@/lib/scoring";
 import { DRIVERS } from "@/lib/constants";
@@ -101,15 +101,15 @@ async function getRacePicksStatus(raceId: number) {
 }
 
 async function getLastRaceRecap(currentYear: number) {
-  const lastRace = await prisma.race.findFirst({
-    where: {
-      season: currentYear,
-      result: { isNot: null },
-    },
+  const racesWithResults = await prisma.race.findMany({
+    where: { season: currentYear, result: { isNot: null } },
     orderBy: { date: "desc" },
+    select: { id: true, name: true, round: true, location: true, date: true, hasSprint: true },
   });
 
-  if (!lastRace) return null;
+  if (racesWithResults.length === 0) return null;
+
+  const lastRace = racesWithResults[0];
 
   const [picks, scores, allUsers] = await Promise.all([
     prisma.pick.findMany({ where: { raceId: lastRace.id } }),
@@ -137,7 +137,13 @@ async function getLastRaceRecap(currentYear: number) {
     })
     .sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
 
-  return { race: lastRace, entries };
+  return {
+    races: racesWithResults.map((r) => ({ id: r.id, name: r.name })),
+    initialRecap: {
+      race: { ...lastRace, date: lastRace.date.toISOString() },
+      entries,
+    },
+  };
 }
 
 export default async function DashboardPage() {
@@ -236,9 +242,9 @@ export default async function DashboardPage() {
           <Leaderboard entries={leaderboard} currentUserId={userId} />
 
           {lastRaceRecap && (
-            <LastRaceRecap
-              race={lastRaceRecap.race}
-              entries={lastRaceRecap.entries}
+            <RaceRecapSelector
+              races={lastRaceRecap.races}
+              initialRecap={lastRaceRecap.initialRecap}
               currentUserId={userId}
             />
           )}
