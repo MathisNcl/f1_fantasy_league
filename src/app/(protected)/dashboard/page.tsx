@@ -162,7 +162,7 @@ async function getChartData(currentYear: number) {
   // Cumul par joueur au fil des GPs
   const cumul: Record<string, number> = {};
   const data = races.map((race) => {
-    const point: Record<string, string | number> = { raceName: race.name };
+    const point: { raceName: string; [userId: string]: string | number } = { raceName: race.name };
     for (const user of users) {
       const s = scores.find((sc) => sc.raceId === race.id && sc.userId === user.id);
       cumul[user.id] = (cumul[user.id] ?? 0) + (s?.points ?? 0);
