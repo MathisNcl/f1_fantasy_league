@@ -5,6 +5,7 @@ import ResultsForm from "@/components/admin/ResultsForm";
 import RaceForm from "@/components/admin/RaceForm";
 import UsersList from "@/components/admin/UsersList";
 import AllowedEmailsList from "@/components/admin/AllowedEmailsList";
+import EnergyAdjust from "@/components/admin/EnergyAdjust";
 
 export default async function AdminPage() {
   const session = await auth();
@@ -45,6 +46,8 @@ export default async function AdminPage() {
         <AllowedEmailsList allowedEmails={allowedEmails} />
         <UsersList users={users} />
       </div>
+
+      <EnergyAdjust />
     </div>
   );
 }
