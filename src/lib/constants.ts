@@ -87,7 +87,7 @@ export const STRATEGIES = [
   {
     code: "undercut",
     label: "Undercut",
-    description: "Enlève 10% de vos points à chaque joueur vous précédant",
+    description: "Enlève 50% de vos points à chaque joueur vous précédant",
     tokens: 1,
     color: "purple" as const,
   },
