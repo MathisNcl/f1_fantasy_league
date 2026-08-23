@@ -251,7 +251,7 @@ function buildStrategyNote(
     case "pluie":        return pluieActivated ? "Pluie : total ×2 (drapeau rouge)" : "Pluie : pas de drapeau rouge";
     case "moteur":       return "Moteur : aucune fatigue appliquée ce week-end";
     case "huile_moteur": return huileMoteurTarget ? `Huile moteur : +10% énergie → ${huileMoteurTarget}` : "Huile moteur";
-    case "undercut":     return "Undercut : −10% de vos pts retirés aux joueurs devant vous";
+    case "undercut":     return "Undercut : −50% de vos pts retirés aux joueurs devant vous";
     case "drs":          return "DRS : vous gagnez les pts de votre cible si vous scorez moins";
     case "medium":       return "";
     default:             return "";
@@ -486,7 +486,7 @@ export function calculateAllScoresWithBreakdown(
     if (pick.strategy !== "undercut") continue;
     const myScore = baseScores[pick.userId] ?? 0;
     const myRank = ranked.findIndex(([uid]) => uid === pick.userId);
-    const deduction = Math.round(myScore * 0.1);
+    const deduction = Math.round(myScore * 0.5);
     for (let i = 0; i < myRank; i++) {
       const targetId = ranked[i][0];
       undercutDeltas[targetId] = (undercutDeltas[targetId] ?? 0) - deduction;
