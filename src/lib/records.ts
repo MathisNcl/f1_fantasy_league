@@ -16,13 +16,13 @@ export type RaceRecord = {
 };
 
 export type Records = {
-  bestScore: RaceRecord | null;
-  worstScore: RaceRecord | null;
-  bestStrategyGain: { user: UserRef; race: RaceRef; strategy: string; gain: number } | null;
-  bestUndercut: { user: UserRef; race: RaceRef; damage: number } | null;
-  mostMissedRaces: { user: UserRef; count: number } | null;
-  mostPickedDriverByUser: { user: UserRef; driverCode: string; count: number } | null;
-  chouchou: { driverCode: string; count: number } | null;
+  bestScore: RaceRecord[];
+  worstScore: RaceRecord[];
+  bestStrategyGain: { user: UserRef; race: RaceRef; strategy: string; gain: number }[];
+  bestUndercut: { user: UserRef; race: RaceRef; damage: number }[];
+  mostMissedRaces: { user: UserRef; count: number }[];
+  mostPickedDriverByUser: { user: UserRef; driverCode: string; count: number }[];
+  chouchou: { driverCode: string; count: number }[];
   moutonsNoirs: string[];
   bestComeback: {
     user: UserRef;
@@ -30,23 +30,36 @@ export type Records = {
     race: RaceRef;
     fromRank: number;
     toRank: number;
-  } | null;
+  }[];
   bestStreak: {
     user: UserRef;
     season: number;
     length: number;
     startRace: RaceRef;
     endRace: RaceRef;
-  } | null;
-  mostDnf: { user: UserRef; count: number } | null;
-  teamLoyalty: { user: UserRef; team: string; count: number } | null;
-  theBoss: { user: UserRef; weeks: number } | null;
-  alwaysLast: { user: UserRef; weeks: number } | null;
-  speedrunner: { user: UserRef; avgHours: number } | null;
-  lastMinute: { user: UserRef; avgHours: number } | null;
-  mrConstance: { user: UserRef; stdDev: number; races: number } | null;
-  rollercoaster: { user: UserRef; stdDev: number; races: number } | null;
+  }[];
+  mostDnf: { user: UserRef; count: number }[];
+  teamLoyalty: { user: UserRef; team: string; count: number }[];
+  theBoss: { user: UserRef; weeks: number }[];
+  alwaysLast: { user: UserRef; weeks: number }[];
+  speedrunner: { user: UserRef; avgHours: number }[];
+  lastMinute: { user: UserRef; avgHours: number }[];
+  mrConstance: { user: UserRef; stdDev: number; races: number }[];
+  rollercoaster: { user: UserRef; stdDev: number; races: number }[];
+  mostWins: { user: UserRef; count: number }[];
+  mostPodiums: { user: UserRef; count: number }[];
 };
+
+// Renvoie toutes les entrées à égalité sur la valeur extrême (gère les ex æquo).
+function topByValue<T>(items: T[], valueOf: (item: T) => number, mode: "max" | "min" = "max"): T[] {
+  if (items.length === 0) return [];
+  let best = valueOf(items[0]);
+  for (const item of items) {
+    const v = valueOf(item);
+    if (mode === "max" ? v > best : v < best) best = v;
+  }
+  return items.filter((item) => valueOf(item) === best);
+}
 
 function parseBreakdown(raw: string | null): StoredBreakdown | null {
   if (!raw) return null;
@@ -133,38 +146,34 @@ export async function getRecords(): Promise<Records> {
   // ---------------------------------------------------------------------
   // Meilleur / pire score sur un GP
   // ---------------------------------------------------------------------
-  let bestScore: RaceRecord | null = null;
-  let worstScore: RaceRecord | null = null;
-  for (const s of scores) {
-    if (!bestScore || s.points > bestScore.value) {
-      bestScore = { user: userMap.get(s.userId)!, race: toRaceRef(s.raceId), value: s.points };
-    }
-    if (!worstScore || s.points < worstScore.value) {
-      worstScore = { user: userMap.get(s.userId)!, race: toRaceRef(s.raceId), value: s.points };
-    }
-  }
+  const scoreCandidates: RaceRecord[] = scores.map((s) => ({
+    user: userMap.get(s.userId)!,
+    race: toRaceRef(s.raceId),
+    value: s.points,
+  }));
+  const bestScore = topByValue(scoreCandidates, (c) => c.value, "max");
+  const worstScore = topByValue(scoreCandidates, (c) => c.value, "min");
 
   // ---------------------------------------------------------------------
   // Meilleur gain de points grâce à une stratégie (soft/hard/ultra_tendre/
   // super_dur/pluie) : points obtenus en plus par rapport à une semaine neutre
   // ---------------------------------------------------------------------
   const pickByUserRace = new Map(picks.map((p) => [`${p.userId}:${p.raceId}`, p]));
-  let bestStrategyGain: Records["bestStrategyGain"] = null;
+  const strategyGainCandidates: Records["bestStrategyGain"] = [];
   for (const s of scores) {
     if (!s.bd) continue;
     const pick = pickByUserRace.get(`${s.userId}:${s.raceId}`);
     if (!pick) continue;
     const gain = computeStrategyGain(s.bd, pick.strategy);
     if (gain <= 0) continue;
-    if (!bestStrategyGain || gain > bestStrategyGain.gain) {
-      bestStrategyGain = {
-        user: userMap.get(s.userId)!,
-        race: toRaceRef(s.raceId),
-        strategy: STRATEGY_LABEL.get(pick.strategy) ?? pick.strategy,
-        gain,
-      };
-    }
+    strategyGainCandidates.push({
+      user: userMap.get(s.userId)!,
+      race: toRaceRef(s.raceId),
+      strategy: STRATEGY_LABEL.get(pick.strategy) ?? pick.strategy,
+      gain,
+    });
   }
+  const bestStrategyGain = topByValue(strategyGainCandidates, (c) => c.gain, "max");
 
   // ---------------------------------------------------------------------
   // Meilleur undercut : dégâts totaux infligés lors d'un GP joué en undercut
@@ -175,15 +184,14 @@ export async function getRecords(): Promise<Records> {
     const dmg = Math.abs(s.bd.undercutLoss);
     if (dmg > 0) damageByRace.set(s.raceId, (damageByRace.get(s.raceId) ?? 0) + dmg);
   }
-  let bestUndercut: Records["bestUndercut"] = null;
+  const undercutCandidates: Records["bestUndercut"] = [];
   for (const p of picks) {
     if (p.strategy !== "undercut") continue;
     const damage = damageByRace.get(p.raceId) ?? 0;
     if (damage <= 0) continue;
-    if (!bestUndercut || damage > bestUndercut.damage) {
-      bestUndercut = { user: userMap.get(p.userId)!, race: toRaceRef(p.raceId), damage };
-    }
+    undercutCandidates.push({ user: userMap.get(p.userId)!, race: toRaceRef(p.raceId), damage });
   }
+  const bestUndercut = topByValue(undercutCandidates, (c) => c.damage, "max");
 
   // ---------------------------------------------------------------------
   // GP loupés (pas de pick soumis alors que la deadline est passée)
@@ -201,12 +209,11 @@ export async function getRecords(): Promise<Records> {
     }
     if (count > 0) missedByUser.set(user.id, count);
   }
-  let mostMissedRaces: Records["mostMissedRaces"] = null;
-  for (const [userId, count] of missedByUser) {
-    if (!mostMissedRaces || count > mostMissedRaces.count) {
-      mostMissedRaces = { user: userMap.get(userId)!, count };
-    }
-  }
+  const mostMissedRaces = topByValue(
+    Array.from(missedByUser, ([userId, count]) => ({ user: userMap.get(userId)!, count })),
+    (c) => c.count,
+    "max"
+  );
 
   // ---------------------------------------------------------------------
   // Pilote le plus pické par un même joueur / chouchou / moutons noirs
@@ -220,18 +227,20 @@ export async function getRecords(): Promise<Records> {
       pickCountByDriver.set(code, (pickCountByDriver.get(code) ?? 0) + 1);
     }
   }
-  let mostPickedDriverByUser: Records["mostPickedDriverByUser"] = null;
-  for (const [key, count] of pickCountByUserDriver) {
-    const [userId, driverCode] = key.split(":");
-    if (!mostPickedDriverByUser || count > mostPickedDriverByUser.count) {
-      mostPickedDriverByUser = { user: userMap.get(userId)!, driverCode, count };
-    }
-  }
+  const mostPickedDriverByUser = topByValue(
+    Array.from(pickCountByUserDriver, ([key, count]) => {
+      const [userId, driverCode] = key.split(":");
+      return { user: userMap.get(userId)!, driverCode, count };
+    }),
+    (c) => c.count,
+    "max"
+  );
 
-  let chouchou: Records["chouchou"] = null;
-  for (const [driverCode, count] of pickCountByDriver) {
-    if (!chouchou || count > chouchou.count) chouchou = { driverCode, count };
-  }
+  const chouchou = topByValue(
+    Array.from(pickCountByDriver, ([driverCode, count]) => ({ driverCode, count })),
+    (c) => c.count,
+    "max"
+  );
 
   const moutonsNoirs = DRIVERS.filter((d) => !pickCountByDriver.has(d.code)).map((d) => d.code);
 
@@ -243,21 +252,53 @@ export async function getRecords(): Promise<Records> {
     const key = `${p.userId}:${p.team}`;
     teamCountByUser.set(key, (teamCountByUser.get(key) ?? 0) + 1);
   }
-  let teamLoyalty: Records["teamLoyalty"] = null;
-  for (const [key, count] of teamCountByUser) {
-    const [userId, team] = key.split(":");
-    if (!teamLoyalty || count > teamLoyalty.count) {
-      teamLoyalty = { user: userMap.get(userId)!, team, count };
-    }
-  }
+  const teamLoyalty = topByValue(
+    Array.from(teamCountByUser, ([key, count]) => {
+      const [userId, team] = key.split(":");
+      return { user: userMap.get(userId)!, team, count };
+    }),
+    (c) => c.count,
+    "max"
+  );
 
   // ---------------------------------------------------------------------
-  // Comeback + série (streak top 3) — calculés par saison via le classement
-  // général cumulé après chaque GP
+  // GP gagnés / podiums : classement hebdomadaire entre joueurs (classement
+  // dense, gère les égalités de points au sein d'un même GP)
+  // ---------------------------------------------------------------------
+  const scoresByRace = new Map<number, typeof scores>();
+  for (const s of scores) {
+    if (!scoresByRace.has(s.raceId)) scoresByRace.set(s.raceId, []);
+    scoresByRace.get(s.raceId)!.push(s);
+  }
+  const winsByUser = new Map<string, number>();
+  const podiumsByUser = new Map<string, number>();
+  for (const raceScores of scoresByRace.values()) {
+    const distinctValues = Array.from(new Set(raceScores.map((s) => s.points))).sort((a, b) => b - a);
+    const rankOf = new Map(distinctValues.map((v, i) => [v, i + 1]));
+    for (const s of raceScores) {
+      const rank = rankOf.get(s.points)!;
+      if (rank === 1) winsByUser.set(s.userId, (winsByUser.get(s.userId) ?? 0) + 1);
+      if (rank <= 3) podiumsByUser.set(s.userId, (podiumsByUser.get(s.userId) ?? 0) + 1);
+    }
+  }
+  const mostWins = topByValue(
+    Array.from(winsByUser, ([userId, count]) => ({ user: userMap.get(userId)!, count })),
+    (c) => c.count,
+    "max"
+  );
+  const mostPodiums = topByValue(
+    Array.from(podiumsByUser, ([userId, count]) => ({ user: userMap.get(userId)!, count })),
+    (c) => c.count,
+    "max"
+  );
+
+  // ---------------------------------------------------------------------
+  // Comeback + série (streak top 3) + patron / choux — calculés par saison
+  // via le classement général cumulé après chaque GP
   // ---------------------------------------------------------------------
   const seasons = Array.from(new Set(races.map((r) => r.season))).sort();
-  let bestComeback: Records["bestComeback"] = null;
-  let bestStreak: Records["bestStreak"] = null;
+  const comebackCandidates: Records["bestComeback"] = [];
+  const streakCandidates: Records["bestStreak"] = [];
   const weeksAtTop = new Map<string, number>();
   const weeksLast = new Map<string, number>();
 
@@ -294,16 +335,13 @@ export async function getRecords(): Promise<Records> {
           if (prevRank === undefined) continue;
           const gain = prevRank - rank;
           if (gain > 0) {
-            const currentBestGain = bestComeback ? bestComeback.fromRank - bestComeback.toRank : 0;
-            if (gain > currentBestGain) {
-              bestComeback = {
-                user: userMap.get(userId)!,
-                season,
-                race: { id: race.id, name: race.name, round: race.round, season: race.season },
-                fromRank: prevRank,
-                toRank: rank,
-              };
-            }
+            comebackCandidates.push({
+              user: userMap.get(userId)!,
+              season,
+              race: { id: race.id, name: race.name, round: race.round, season: race.season },
+              fromRank: prevRank,
+              toRank: rank,
+            });
           }
         }
       }
@@ -326,15 +364,13 @@ export async function getRecords(): Promise<Records> {
           }
           const newLen = prevLen + 1;
           currentStreak.set(userId, newLen);
-          if (!bestStreak || newLen > bestStreak.length) {
-            bestStreak = {
-              user: userMap.get(userId)!,
-              season,
-              length: newLen,
-              startRace: streakStart.get(userId)!,
-              endRace: { id: race.id, name: race.name, round: race.round, season: race.season },
-            };
-          }
+          streakCandidates.push({
+            user: userMap.get(userId)!,
+            season,
+            length: newLen,
+            startRace: streakStart.get(userId)!,
+            endRace: { id: race.id, name: race.name, round: race.round, season: race.season },
+          });
         } else {
           currentStreak.set(userId, 0);
         }
@@ -344,14 +380,18 @@ export async function getRecords(): Promise<Records> {
     }
   }
 
-  let theBoss: Records["theBoss"] = null;
-  for (const [userId, weeks] of weeksAtTop) {
-    if (!theBoss || weeks > theBoss.weeks) theBoss = { user: userMap.get(userId)!, weeks };
-  }
-  let alwaysLast: Records["alwaysLast"] = null;
-  for (const [userId, weeks] of weeksLast) {
-    if (!alwaysLast || weeks > alwaysLast.weeks) alwaysLast = { user: userMap.get(userId)!, weeks };
-  }
+  const bestComeback = topByValue(comebackCandidates, (c) => c.fromRank - c.toRank, "max");
+  const bestStreak = topByValue(streakCandidates, (c) => c.length, "max");
+  const theBoss = topByValue(
+    Array.from(weeksAtTop, ([userId, weeks]) => ({ user: userMap.get(userId)!, weeks })),
+    (c) => c.weeks,
+    "max"
+  );
+  const alwaysLast = topByValue(
+    Array.from(weeksLast, ([userId, weeks]) => ({ user: userMap.get(userId)!, weeks })),
+    (c) => c.weeks,
+    "max"
+  );
 
   // ---------------------------------------------------------------------
   // Speedrunner / dernière minute : délai moyen entre soumission du pick
@@ -367,18 +407,13 @@ export async function getRecords(): Promise<Records> {
     leadHoursByUser.get(p.userId)!.push(hours);
   }
   const MIN_PICKS_FOR_TIMING = 3;
-  let speedrunner: Records["speedrunner"] = null;
-  let lastMinute: Records["lastMinute"] = null;
-  for (const [userId, hoursList] of leadHoursByUser) {
-    if (hoursList.length < MIN_PICKS_FOR_TIMING) continue;
-    const avgHours = hoursList.reduce((a, b) => a + b, 0) / hoursList.length;
-    if (!speedrunner || avgHours > speedrunner.avgHours) {
-      speedrunner = { user: userMap.get(userId)!, avgHours };
-    }
-    if (!lastMinute || avgHours < lastMinute.avgHours) {
-      lastMinute = { user: userMap.get(userId)!, avgHours };
-    }
-  }
+  const timingEntries = Array.from(leadHoursByUser, ([userId, hoursList]) => ({
+    user: userMap.get(userId)!,
+    avgHours: hoursList.reduce((a, b) => a + b, 0) / hoursList.length,
+    count: hoursList.length,
+  })).filter((e) => e.count >= MIN_PICKS_FOR_TIMING);
+  const speedrunner = topByValue(timingEntries, (c) => c.avgHours, "max").map(({ user, avgHours }) => ({ user, avgHours }));
+  const lastMinute = topByValue(timingEntries, (c) => c.avgHours, "min").map(({ user, avgHours }) => ({ user, avgHours }));
 
   // ---------------------------------------------------------------------
   // Mr Constance / Montagnes russes : écart-type des points par GP
@@ -389,20 +424,13 @@ export async function getRecords(): Promise<Records> {
     pointsByUser.get(s.userId)!.push(s.points);
   }
   const MIN_RACES_FOR_STDDEV = 5;
-  let mrConstance: Records["mrConstance"] = null;
-  let rollercoaster: Records["rollercoaster"] = null;
-  for (const [userId, pts] of pointsByUser) {
-    if (pts.length < MIN_RACES_FOR_STDDEV) continue;
+  const stdDevEntries = Array.from(pointsByUser, ([userId, pts]) => {
     const mean = pts.reduce((a, b) => a + b, 0) / pts.length;
     const variance = pts.reduce((a, b) => a + (b - mean) ** 2, 0) / pts.length;
-    const stdDev = Math.sqrt(variance);
-    if (!mrConstance || stdDev < mrConstance.stdDev) {
-      mrConstance = { user: userMap.get(userId)!, stdDev, races: pts.length };
-    }
-    if (!rollercoaster || stdDev > rollercoaster.stdDev) {
-      rollercoaster = { user: userMap.get(userId)!, stdDev, races: pts.length };
-    }
-  }
+    return { user: userMap.get(userId)!, stdDev: Math.sqrt(variance), races: pts.length };
+  }).filter((e) => e.races >= MIN_RACES_FOR_STDDEV);
+  const mrConstance = topByValue(stdDevEntries, (c) => c.stdDev, "min");
+  const rollercoaster = topByValue(stdDevEntries, (c) => c.stdDev, "max");
 
   // ---------------------------------------------------------------------
   // Guigne pure : DNF cumulés sur ses picks
@@ -415,10 +443,11 @@ export async function getRecords(): Promise<Records> {
     if (s.bd.d2.hasDnf) dnf++;
     if (dnf > 0) dnfByUser.set(s.userId, (dnfByUser.get(s.userId) ?? 0) + dnf);
   }
-  let mostDnf: Records["mostDnf"] = null;
-  for (const [userId, count] of dnfByUser) {
-    if (!mostDnf || count > mostDnf.count) mostDnf = { user: userMap.get(userId)!, count };
-  }
+  const mostDnf = topByValue(
+    Array.from(dnfByUser, ([userId, count]) => ({ user: userMap.get(userId)!, count })),
+    (c) => c.count,
+    "max"
+  );
 
   return {
     bestScore,
@@ -439,5 +468,7 @@ export async function getRecords(): Promise<Records> {
     lastMinute,
     mrConstance,
     rollercoaster,
+    mostWins,
+    mostPodiums,
   };
 }

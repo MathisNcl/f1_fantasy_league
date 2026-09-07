@@ -63,6 +63,20 @@ function UserLine({
   );
 }
 
+// Rend une liste d'entrées ex æquo, chacune séparée par une ligne quand il y en a plusieurs.
+function Entries<T>({ items, render }: { items: T[]; render: (item: T, i: number) => React.ReactNode }) {
+  if (items.length === 0) return <Empty />;
+  return (
+    <div className="space-y-3">
+      {items.map((item, i) => (
+        <div key={i} className={i > 0 ? "pt-3 border-t border-gray-800" : ""}>
+          {render(item, i)}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default async function RecordsPage() {
   await auth();
   const records = await getRecords();
@@ -76,110 +90,98 @@ export default async function RecordsPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <RecordCard emoji="🏆" title="Meilleur score sur un GP">
-          {records.bestScore ? (
-            <>
-              <UserLine
-                userId={records.bestScore.user.id}
-                userName={records.bestScore.user.name}
-                value={records.bestScore.value}
-                suffix="pts"
-              />
-              <p className="text-gray-500 text-xs mt-1">{raceLabel(records.bestScore.race)}</p>
-            </>
-          ) : (
-            <Empty />
-          )}
+          <Entries
+            items={records.bestScore}
+            render={(r) => (
+              <>
+                <UserLine userId={r.user.id} userName={r.user.name} value={r.value} suffix="pts" />
+                <p className="text-gray-500 text-xs mt-1">{raceLabel(r.race)}</p>
+              </>
+            )}
+          />
         </RecordCard>
 
         <RecordCard emoji="💀" title="Pire score sur un GP">
-          {records.worstScore ? (
-            <>
-              <UserLine
-                userId={records.worstScore.user.id}
-                userName={records.worstScore.user.name}
-                value={records.worstScore.value}
-                suffix="pts"
-              />
-              <p className="text-gray-500 text-xs mt-1">{raceLabel(records.worstScore.race)}</p>
-            </>
-          ) : (
-            <Empty />
-          )}
+          <Entries
+            items={records.worstScore}
+            render={(r) => (
+              <>
+                <UserLine userId={r.user.id} userName={r.user.name} value={r.value} suffix="pts" />
+                <p className="text-gray-500 text-xs mt-1">{raceLabel(r.race)}</p>
+              </>
+            )}
+          />
+        </RecordCard>
+
+        <RecordCard emoji="🥇" title="Le plus de GP gagnés">
+          <Entries
+            items={records.mostWins}
+            render={(r) => <UserLine userId={r.user.id} userName={r.user.name} value={r.count} suffix="victoires" />}
+          />
+        </RecordCard>
+
+        <RecordCard emoji="🏅" title="Le plus de podiums">
+          <Entries
+            items={records.mostPodiums}
+            render={(r) => <UserLine userId={r.user.id} userName={r.user.name} value={r.count} suffix="podiums" />}
+          />
         </RecordCard>
 
         <RecordCard emoji="🎲" title="Meilleur coup de stratégie">
-          {records.bestStrategyGain ? (
-            <>
-              <UserLine
-                userId={records.bestStrategyGain.user.id}
-                userName={records.bestStrategyGain.user.name}
-                value={`+${records.bestStrategyGain.gain}`}
-                suffix="pts"
-              />
-              <p className="text-gray-500 text-xs mt-1">
-                {records.bestStrategyGain.strategy} · {raceLabel(records.bestStrategyGain.race)}
-              </p>
-            </>
-          ) : (
-            <Empty />
-          )}
+          <Entries
+            items={records.bestStrategyGain}
+            render={(r) => (
+              <>
+                <UserLine userId={r.user.id} userName={r.user.name} value={`+${r.gain}`} suffix="pts" />
+                <p className="text-gray-500 text-xs mt-1">{r.strategy} · {raceLabel(r.race)}</p>
+              </>
+            )}
+          />
         </RecordCard>
 
         <RecordCard emoji="🔪" title="Meilleur undercut">
-          {records.bestUndercut ? (
-            <>
-              <UserLine
-                userId={records.bestUndercut.user.id}
-                userName={records.bestUndercut.user.name}
-                value={`-${records.bestUndercut.damage}`}
-                suffix="pts infligés"
-              />
-              <p className="text-gray-500 text-xs mt-1">{raceLabel(records.bestUndercut.race)}</p>
-            </>
-          ) : (
-            <Empty />
-          )}
+          <Entries
+            items={records.bestUndercut}
+            render={(r) => (
+              <>
+                <UserLine userId={r.user.id} userName={r.user.name} value={`-${r.damage}`} suffix="pts infligés" />
+                <p className="text-gray-500 text-xs mt-1">{raceLabel(r.race)}</p>
+              </>
+            )}
+          />
         </RecordCard>
 
         <RecordCard emoji="📭" title="Le plus de GP loupés">
-          {records.mostMissedRaces ? (
-            <UserLine
-              userId={records.mostMissedRaces.user.id}
-              userName={records.mostMissedRaces.user.name}
-              value={records.mostMissedRaces.count}
-              suffix="GP"
-            />
-          ) : (
-            <Empty />
-          )}
+          <Entries
+            items={records.mostMissedRaces}
+            render={(r) => <UserLine userId={r.user.id} userName={r.user.name} value={r.count} suffix="GP" />}
+          />
         </RecordCard>
 
         <RecordCard emoji="🔁" title="Fidélité à un pilote">
-          {records.mostPickedDriverByUser ? (
-            <>
-              <UserLine
-                userId={records.mostPickedDriverByUser.user.id}
-                userName={records.mostPickedDriverByUser.user.name}
-                value={records.mostPickedDriverByUser.count}
-                suffix="fois"
-              />
-              <p className="text-gray-500 text-xs mt-1">
-                avec {driverName(records.mostPickedDriverByUser.driverCode)}
-              </p>
-            </>
-          ) : (
-            <Empty />
-          )}
+          <Entries
+            items={records.mostPickedDriverByUser}
+            render={(r) => (
+              <>
+                <UserLine userId={r.user.id} userName={r.user.name} value={r.count} suffix="fois" />
+                <p className="text-gray-500 text-xs mt-1">avec {driverName(r.driverCode)}</p>
+              </>
+            )}
+          />
         </RecordCard>
 
         <RecordCard emoji="⭐" title="Chouchou de la ligue">
-          {records.chouchou ? (
-            <div className="flex items-baseline justify-between gap-3">
-              <span className="text-white font-medium">{driverName(records.chouchou.driverCode)}</span>
-              <span className="text-xl font-bold text-white shrink-0">
-                {records.chouchou.count}
-                <span className="text-sm text-gray-400 font-normal ml-1">picks</span>
-              </span>
+          {records.chouchou.length > 0 ? (
+            <div className="space-y-2">
+              {records.chouchou.map((c) => (
+                <div key={c.driverCode} className="flex items-baseline justify-between gap-3">
+                  <span className="text-white font-medium">{driverName(c.driverCode)}</span>
+                  <span className="text-xl font-bold text-white shrink-0">
+                    {c.count}
+                    <span className="text-sm text-gray-400 font-normal ml-1">picks</span>
+                  </span>
+                </div>
+              ))}
             </div>
           ) : (
             <Empty />
@@ -197,153 +199,106 @@ export default async function RecordsPage() {
         </RecordCard>
 
         <RecordCard emoji="🚀" title="Meilleur comeback">
-          {records.bestComeback ? (
-            <>
-              <UserLine
-                userId={records.bestComeback.user.id}
-                userName={records.bestComeback.user.name}
-                value={`${records.bestComeback.fromRank}e → ${records.bestComeback.toRank}e`}
-              />
-              <p className="text-gray-500 text-xs mt-1">{raceLabel(records.bestComeback.race)}</p>
-            </>
-          ) : (
-            <Empty />
-          )}
+          <Entries
+            items={records.bestComeback}
+            render={(r) => (
+              <>
+                <UserLine userId={r.user.id} userName={r.user.name} value={`${r.fromRank}e → ${r.toRank}e`} />
+                <p className="text-gray-500 text-xs mt-1">{raceLabel(r.race)}</p>
+              </>
+            )}
+          />
         </RecordCard>
 
         <RecordCard emoji="🔥" title="Meilleure série dans le top 3">
-          {records.bestStreak ? (
-            <>
-              <UserLine
-                userId={records.bestStreak.user.id}
-                userName={records.bestStreak.user.name}
-                value={records.bestStreak.length}
-                suffix="GP"
-              />
-              <p className="text-gray-500 text-xs mt-1">
-                {records.bestStreak.startRace.round === records.bestStreak.endRace.round
-                  ? raceLabel(records.bestStreak.startRace)
-                  : `du round ${records.bestStreak.startRace.round} au round ${records.bestStreak.endRace.round} (${records.bestStreak.season})`}
-              </p>
-            </>
-          ) : (
-            <Empty />
-          )}
+          <Entries
+            items={records.bestStreak}
+            render={(r) => (
+              <>
+                <UserLine userId={r.user.id} userName={r.user.name} value={r.length} suffix="GP" />
+                <p className="text-gray-500 text-xs mt-1">
+                  {r.startRace.round === r.endRace.round
+                    ? raceLabel(r.startRace)
+                    : `du round ${r.startRace.round} au round ${r.endRace.round} (${r.season})`}
+                </p>
+              </>
+            )}
+          />
         </RecordCard>
 
         <RecordCard emoji="💥" title="Le plus d'abandons subis">
-          {records.mostDnf ? (
-            <UserLine
-              userId={records.mostDnf.user.id}
-              userName={records.mostDnf.user.name}
-              value={records.mostDnf.count}
-              suffix="DNF"
-            />
-          ) : (
-            <Empty />
-          )}
+          <Entries
+            items={records.mostDnf}
+            render={(r) => <UserLine userId={r.user.id} userName={r.user.name} value={r.count} suffix="DNF" />}
+          />
         </RecordCard>
 
         <RecordCard emoji="❤️" title="Fidèle à l'écurie">
-          {records.teamLoyalty ? (
-            <>
-              <UserLine
-                userId={records.teamLoyalty.user.id}
-                userName={records.teamLoyalty.user.name}
-                value={records.teamLoyalty.count}
-                suffix="fois"
-              />
-              <p className="text-gray-500 text-xs mt-1">avec {records.teamLoyalty.team}</p>
-            </>
-          ) : (
-            <Empty />
-          )}
+          <Entries
+            items={records.teamLoyalty}
+            render={(r) => (
+              <>
+                <UserLine userId={r.user.id} userName={r.user.name} value={r.count} suffix="fois" />
+                <p className="text-gray-500 text-xs mt-1">avec {r.team}</p>
+              </>
+            )}
+          />
         </RecordCard>
 
         <RecordCard emoji="👑" title="Le patron">
-          {records.theBoss ? (
-            <UserLine
-              userId={records.theBoss.user.id}
-              userName={records.theBoss.user.name}
-              value={records.theBoss.weeks}
-              suffix="semaines en tête"
-            />
-          ) : (
-            <Empty />
-          )}
+          <Entries
+            items={records.theBoss}
+            render={(r) => <UserLine userId={r.user.id} userName={r.user.name} value={r.weeks} suffix="semaines en tête" />}
+          />
         </RecordCard>
 
         <RecordCard emoji="🥬" title="Toujours dans les choux">
-          {records.alwaysLast ? (
-            <UserLine
-              userId={records.alwaysLast.user.id}
-              userName={records.alwaysLast.user.name}
-              value={records.alwaysLast.weeks}
-              suffix="semaines dernier"
-            />
-          ) : (
-            <Empty />
-          )}
+          <Entries
+            items={records.alwaysLast}
+            render={(r) => <UserLine userId={r.user.id} userName={r.user.name} value={r.weeks} suffix="semaines dernier" />}
+          />
         </RecordCard>
 
         <RecordCard emoji="⏱️" title="Speedrunner">
-          {records.speedrunner ? (
-            <>
-              <UserLine
-                userId={records.speedrunner.user.id}
-                userName={records.speedrunner.user.name}
-                value={formatLead(records.speedrunner.avgHours)}
-                suffix="avant deadline (moy.)"
-              />
-            </>
-          ) : (
-            <Empty />
-          )}
+          <Entries
+            items={records.speedrunner}
+            render={(r) => (
+              <UserLine userId={r.user.id} userName={r.user.name} value={formatLead(r.avgHours)} suffix="avant deadline (moy.)" />
+            )}
+          />
         </RecordCard>
 
         <RecordCard emoji="🐌" title="Dernière minute">
-          {records.lastMinute ? (
-            <UserLine
-              userId={records.lastMinute.user.id}
-              userName={records.lastMinute.user.name}
-              value={formatLead(records.lastMinute.avgHours)}
-              suffix="avant deadline (moy.)"
-            />
-          ) : (
-            <Empty />
-          )}
+          <Entries
+            items={records.lastMinute}
+            render={(r) => (
+              <UserLine userId={r.user.id} userName={r.user.name} value={formatLead(r.avgHours)} suffix="avant deadline (moy.)" />
+            )}
+          />
         </RecordCard>
 
         <RecordCard emoji="📏" title="Mr Constance">
-          {records.mrConstance ? (
-            <>
-              <UserLine
-                userId={records.mrConstance.user.id}
-                userName={records.mrConstance.user.name}
-                value={records.mrConstance.stdDev.toFixed(1)}
-                suffix="écart-type"
-              />
-              <p className="text-gray-500 text-xs mt-1">sur {records.mrConstance.races} GP notés</p>
-            </>
-          ) : (
-            <Empty />
-          )}
+          <Entries
+            items={records.mrConstance}
+            render={(r) => (
+              <>
+                <UserLine userId={r.user.id} userName={r.user.name} value={r.stdDev.toFixed(1)} suffix="écart-type" />
+                <p className="text-gray-500 text-xs mt-1">sur {r.races} GP notés</p>
+              </>
+            )}
+          />
         </RecordCard>
 
         <RecordCard emoji="🎢" title="Montagnes russes">
-          {records.rollercoaster ? (
-            <>
-              <UserLine
-                userId={records.rollercoaster.user.id}
-                userName={records.rollercoaster.user.name}
-                value={records.rollercoaster.stdDev.toFixed(1)}
-                suffix="écart-type"
-              />
-              <p className="text-gray-500 text-xs mt-1">sur {records.rollercoaster.races} GP notés</p>
-            </>
-          ) : (
-            <Empty />
-          )}
+          <Entries
+            items={records.rollercoaster}
+            render={(r) => (
+              <>
+                <UserLine userId={r.user.id} userName={r.user.name} value={r.stdDev.toFixed(1)} suffix="écart-type" />
+                <p className="text-gray-500 text-xs mt-1">sur {r.races} GP notés</p>
+              </>
+            )}
+          />
         </RecordCard>
       </div>
     </div>
