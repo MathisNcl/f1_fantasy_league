@@ -32,6 +32,7 @@ export default function Navbar({ userName, userId, isAdmin, isContributor, signO
         <nav className="hidden sm:flex items-center gap-6">
           <Link href="/dashboard" className={linkClass}>Dashboard</Link>
           <Link href="/pilotes" className={linkClass}>Pilotes</Link>
+          <Link href="/records" className={linkClass}>Records</Link>
           <Link href="/regles" className={linkClass}>Règles</Link>
           {isContributor && !isAdmin && (
             <Link href="/contributor" className="text-blue-400 hover:text-blue-300 transition-colors text-sm font-medium">
@@ -68,6 +69,9 @@ export default function Navbar({ userName, userId, isAdmin, isContributor, signO
           </Link>
           <Link href="/pilotes" className="block text-gray-300 hover:text-white text-sm font-medium py-1">
             Pilotes
+          </Link>
+          <Link href="/records" className="block text-gray-300 hover:text-white text-sm font-medium py-1">
+            Records
           </Link>
           <Link href="/regles" className="block text-gray-300 hover:text-white text-sm font-medium py-1">
             Règles
