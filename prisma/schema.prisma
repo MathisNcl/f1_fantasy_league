@@ -23,6 +23,7 @@ model User {
   picks          Pick[]
   scores         Score[]
   driverEnergies DriverEnergy[]
+  energyEvents   EnergyEvent[]
 }
 
 model Race {
@@ -33,10 +34,11 @@ model Race {
   deadline  DateTime?    // Deadline de soumission (FP3). Si null, utilise date.
   round     Int
   season    Int
-  hasSprint Boolean      @default(false)
-  picks     Pick[]
-  result    RaceResult?
-  scores    Score[]
+  hasSprint    Boolean       @default(false)
+  picks        Pick[]
+  result       RaceResult?
+  scores       Score[]
+  energyEvents EnergyEvent[]
 
   @@unique([round, season])
 }
@@ -67,6 +69,28 @@ model DriverEnergy {
   user       User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, driverCode, season])
+}
+
+// Journal chronologique des mutations d'énergie (une ligne = énergie d'un pilote
+// pour un utilisateur après un événement donné). Permet de rejouer la saison en
+// avant après l'édition d'une course passée, plutôt que d'inverser un delta sur
+// une valeur qui a pu être clampée (0-100%), ce qui est non réversible.
+model EnergyEvent {
+  id          String   @id @default(cuid())
+  userId      String
+  driverCode  String
+  season      Int
+  round       Int      // round de la course (RACE), ou dernier round joué au moment du clic (MANUAL)
+  source      String   // "RACE" | "MANUAL"
+  raceId      Int?     // renseigné si source = RACE
+  delta       Float?   // renseigné si source = MANUAL (delta brut appliqué avant clamp)
+  energyAfter Float    // énergie résultante (0.0–1.0) après cet événement
+  createdAt   DateTime @default(now())
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  race        Race?    @relation(fields: [raceId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, driverCode, raceId])
+  @@index([userId, driverCode, season, round, createdAt])
 }
 
 model RaceResult {
