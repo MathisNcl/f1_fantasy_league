@@ -20,10 +20,11 @@ model User {
   password       String
   role           Role            @default(USER)
   createdAt      DateTime        @default(now())
-  picks          Pick[]
-  scores         Score[]
-  driverEnergies DriverEnergy[]
-  energyEvents   EnergyEvent[]
+  picks             Pick[]
+  scores            Score[]
+  driverEnergies    DriverEnergy[]
+  energyEvents      EnergyEvent[]
+  provisionalScores ProvisionalScore[]
 }
 
 model Race {
@@ -35,10 +36,11 @@ model Race {
   round     Int
   season    Int
   hasSprint    Boolean       @default(false)
-  picks        Pick[]
-  result       RaceResult?
-  scores       Score[]
-  energyEvents EnergyEvent[]
+  picks             Pick[]
+  result            RaceResult?
+  scores            Score[]
+  energyEvents      EnergyEvent[]
+  provisionalScores ProvisionalScore[]
 
   @@unique([round, season])
 }
@@ -135,6 +137,22 @@ model Score {
   breakdown String? // JSON sérialisé de ScoreBreakdown
   user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   race      Race    @relation(fields: [raceId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, raceId])
+}
+
+// Score "provisoire" calculé à partir des résultats Jolpica avant que
+// l'officiel ne soit saisi par un admin. Jamais lu par le moteur de scoring :
+// purement un cache d'affichage, supprimé dès que le vrai Score existe.
+model ProvisionalScore {
+  id        String   @id @default(cuid())
+  userId    String
+  raceId    Int
+  points    Int
+  breakdown String?
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  race      Race     @relation(fields: [raceId], references: [id], onDelete: Cascade)
 
   @@unique([userId, raceId])
 }

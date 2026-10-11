@@ -3,6 +3,10 @@
     {
       "path": "/api/cron/remind-picks",
       "schedule": "0 9 * * *"
+    },
+    {
+      "path": "/api/cron/provisional-results",
+      "schedule": "0 21 * * 5,6,0"
     }
   ]
 }

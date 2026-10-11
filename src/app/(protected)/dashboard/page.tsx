@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import Leaderboard from "@/components/dashboard/Leaderboard";
 import PicksForm from "@/components/dashboard/PicksForm";
 import RaceRecapSelector from "@/components/dashboard/RaceRecapSelector";
+import LastRaceRecap from "@/components/dashboard/LastRaceRecap";
 import NextRacePicksStatus from "@/components/dashboard/NextRacePicksStatus";
 import PointsChart from "@/components/dashboard/PointsChart";
 import { getRemainingTokens } from "@/lib/scoring";
@@ -146,6 +147,43 @@ async function getLastRaceRecap(currentYear: number) {
   };
 }
 
+async function getProvisionalRecap(race: { id: number; name: string; round: number; location: string; date: Date; hasSprint: boolean } | null) {
+  if (!race) return null;
+
+  const [picks, provisionalScores, allUsers] = await Promise.all([
+    prisma.pick.findMany({ where: { raceId: race.id } }),
+    prisma.provisionalScore.findMany({ where: { raceId: race.id } }),
+    prisma.user.findMany({ select: { id: true, name: true } }),
+  ]);
+
+  if (provisionalScores.length === 0) return null;
+
+  const entries = picks
+    .map((p) => {
+      const drsTargetUser = p.drsTarget ? allUsers.find((u) => u.id === p.drsTarget) : null;
+      const scoreRecord = provisionalScores.find((s) => s.userId === p.userId);
+      return {
+        userId: p.userId,
+        userName: allUsers.find((u) => u.id === p.userId)?.name ?? "Inconnu",
+        driver1: p.driver1,
+        driver2: p.driver2,
+        team: p.team,
+        strategy: p.strategy,
+        drsTarget: p.drsTarget,
+        drsTargetName: drsTargetUser?.name ?? null,
+        huileMoteurTarget: p.huileMoteurTarget,
+        score: scoreRecord?.points ?? null,
+        breakdown: scoreRecord?.breakdown ?? null,
+      };
+    })
+    .sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
+
+  return {
+    race: { id: race.id, name: race.name, round: race.round, location: race.location, date: race.date, hasSprint: race.hasSprint },
+    entries,
+  };
+}
+
 const CHART_COLORS = [
   "#ef4444", "#3b82f6", "#22c55e", "#f59e0b", "#a855f7",
   "#06b6d4", "#f97316", "#84cc16", "#ec4899", "#14b8a6",
@@ -205,11 +243,12 @@ export default async function DashboardPage() {
   // - sinon nextPickRace si on est en semaine de course (picks cachés avant deadline)
   const raceForStatus = activeRace ?? nextPickRace;
 
-  const [existingPick, lastRaceRecap, picksStatus, chartData] = await Promise.all([
+  const [existingPick, lastRaceRecap, picksStatus, chartData, provisionalRecap] = await Promise.all([
     nextPickRace ? getMyPickForRace(userId, nextPickRace.id) : Promise.resolve(null),
     getLastRaceRecap(currentYear),
     raceForStatus ? getRacePicksStatus(raceForStatus.id) : Promise.resolve([]),
     getChartData(currentYear),
+    getProvisionalRecap(activeRace),
   ]);
 
   // Picks de la saison courante, hors pick de la prochaine course à picker
@@ -287,6 +326,20 @@ export default async function DashboardPage() {
           )}
         </div>
       </div>
+
+      {/* Scores provisoires (non officiels) */}
+      {provisionalRecap && (
+        <div className="space-y-3">
+          <div className="bg-yellow-950/40 border border-yellow-800 rounded-lg px-4 py-2.5 text-yellow-300 text-sm">
+            ⚠️ Scores provisoires — calculés depuis des résultats non officiels, en attente de confirmation par un admin. Peuvent encore changer.
+          </div>
+          <LastRaceRecap
+            race={provisionalRecap.race}
+            entries={provisionalRecap.entries}
+            currentUserId={userId}
+          />
+        </div>
+      )}
 
       {/* Statut des paris */}
       {showPicksStatus && raceForStatus && (
